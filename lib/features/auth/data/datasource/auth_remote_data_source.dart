@@ -1,0 +1,109 @@
+// lib/features/auth/data/datasources/auth_remote_data_source.dart
+
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../domain/entities/auth.dart';
+import '../models/auth_model.dart';
+
+/// Thrown when the remote call fails or the backend returns a non-approved result.
+class ServerException implements Exception {
+  final String message;
+
+  ServerException([this.message = 'Server error']);
+
+  @override
+  String toString() => 'ServerException: $message';
+}
+
+/// Remote data source contract for authentication.
+abstract class AuthRemoteDataSource {
+  /// Sends login credentials to backend and returns an [AuthModel] when the
+  /// backend approves the login (status active/approved) and provides a token.
+  ///
+  /// Throws [ServerException] on HTTP errors, invalid response format, missing token,
+  /// or non-approved status.
+  Future<AuthModel> login({required String email, required String password});
+}
+
+/// Implementation that uses `http.Client`.
+class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
+  final http.Client client;
+  final String baseUrl;
+
+  AuthRemoteDataSourceImpl({required this.client, required this.baseUrl});
+
+  @override
+  Future<AuthModel> login({
+    required String email,
+    required String password,
+  }) async {
+    final uri = Uri.parse('$baseUrl/login'); // adjust endpoint if needed
+
+    http.Response response;
+    try {
+      response = await client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+    } on http.ClientException catch (e) {
+      throw ServerException('Network error: ${e.message}');
+    } catch (e) {
+      throw ServerException('Network error: ${e.toString()}');
+    }
+
+    // HTTP status check
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message = 'HTTP ${response.statusCode}';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        }
+      } catch (_) {}
+      throw ServerException(message);
+    }
+
+    // Parse JSON body
+    dynamic decodedBody;
+    try {
+      decodedBody = jsonDecode(response.body);
+    } catch (e) {
+      throw ServerException('Invalid JSON response');
+    }
+
+    if (decodedBody is! Map<String, dynamic>) {
+      // Some APIs wrap data under `data` key — try to handle that
+      if (decodedBody is Map && decodedBody['data'] is Map<String, dynamic>) {
+        decodedBody = decodedBody['data'] as Map<String, dynamic>;
+      } else {
+        throw ServerException('Unexpected response format');
+      }
+    }
+    final body = decodedBody;
+
+    // Build AuthModel from JSON (the model is tolerant about nested user/role)
+    final authModel = AuthModel.fromJson(body);
+
+    // Validate token existence
+    if (authModel.accessToken.isEmpty) {
+      // Provide backend message if available
+      final backendMessage = (body['message'] ?? body['msg'] ?? '').toString();
+      throw ServerException(
+        backendMessage.isNotEmpty
+            ? backendMessage
+            : 'Token missing in response',
+      );
+    }
+    // Validate status — only allow approved/active
+    if (authModel.status != AuthStatus.active) {
+      final backendMessage = (body['message'] ?? body['msg'] ?? '').toString();
+      throw ServerException(
+        backendMessage.isNotEmpty
+            ? backendMessage
+            : 'Login not approved (status: ${authModel.status})',
+      );
+    }
+    return authModel;
+  }
+}
