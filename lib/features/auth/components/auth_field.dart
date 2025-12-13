@@ -5,11 +5,13 @@ class AuthField extends StatelessWidget {
   final TextEditingController controller;
   final bool isObscureText;
   final bool isEmail;
+  final String errorText;
 
   const AuthField({
     super.key,
-    required this.hintText,
+    this.hintText = "example@muj.manipal.edu",
     required this.controller,
+    required this.errorText,
     this.isObscureText = false,
     this.isEmail = false,
   });
@@ -20,25 +22,11 @@ class AuthField extends StatelessWidget {
       controller: controller,
       keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
       obscureText: isObscureText,
-      decoration: InputDecoration(border: InputBorder.none, hintText: hintText),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return '$hintText is required';
-        }
-
-        if (isEmail) {
-          final email = value.trim().toLowerCase();
-          final regex = RegExp(
-            r'^[a-zA-Z0-9._%+-]+@(muj|jaipur)\.manipal\.edu$',
-          );
-
-          if (!regex.hasMatch(email)) {
-            return 'Use your Manipal email (muj / jaipur)';
-          }
-        }
-
-        return null;
-      },
+      decoration: InputDecoration(
+        border: InputBorder.none,
+        hintText: hintText,
+        hintStyle: TextStyle(fontWeight: FontWeight.w300),
+      ),
     );
   }
 }

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
-  static route() => MaterialPageRoute(builder: (context) => const LoginPage());
+  static Route<void> route() =>
+      MaterialPageRoute(builder: (_) => const LoginPage());
 
   const LoginPage({super.key});
 
@@ -17,40 +18,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController passController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
+  late final ProviderSubscription<AuthState> _authListener;
+
   @override
   void initState() {
     super.initState();
-    // Optionally attempt to restore cached auth on page load
-    // ref.read(authNotifierProvider.notifier).loadCachedAuth();
-  }
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passController.dispose();
-    super.dispose();
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
-    // Listen for auth changes: success -> navigate; failure -> show SnackBar
-    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+    _authListener = ref.listenManual<AuthState>(authNotifierProvider, (
+      previous,
+      next,
+    ) {
+      // Show backend error only once
       if (next.failure != null && next.failure != previous?.failure) {
-        // show failure message
-        _showError(next.failure!.message);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.failure!.message)));
       }
 
-      // If newly signed in (auth becomes non-null), navigate based on role
+      // Navigate on successful login
       if (next.auth != null && previous?.auth == null) {
         final role = next.auth!.user.role.toLowerCase();
-        // Adjust routes '/teacher' and '/student' to your actual pages
         if (role == 'teacher') {
           Navigator.pushReplacementNamed(context, '/teacher');
         } else {
@@ -58,105 +45,132 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         }
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _authListener.close();
+    emailController.dispose();
+    passController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authNotifierProvider);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      body: Container(
-        width: double.infinity,
-        child: Form(
-          key: formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const SizedBox(height: 80),
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Login",
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 40),
+
+                  // App title
+                  const Center(
+                    child: Text(
+                      "AMS",
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 50,
+                        fontSize: 30,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+                  ),
 
-              // White bottom container
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(60),
-                      topRight: Radius.circular(60),
+                  const SizedBox(height: 100),
+
+                  // Page title
+                  const Center(
+                    child: Text(
+                      "Sign In",
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  child: Padding(
+
+                  const SizedBox(height: 40),
+
+                  // Form container
+                  Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 40),
+                        const Text("Email"),
 
-                        // Email TextField
+                        const SizedBox(height: 6),
+
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 5,
                           ),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE6E6E6),
-                            borderRadius: BorderRadius.all(Radius.circular(20)),
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                              width: 1,
+                            ),
                           ),
                           child: AuthField(
-                            hintText: "Email",
                             controller: emailController,
                             isEmail: true,
+                            errorText: "Enter registered email!",
                           ),
                         ),
 
                         const SizedBox(height: 17),
 
-                        // Password TextField
+                        const Text("Password"),
+
+                        const SizedBox(height: 6),
+
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 5,
                           ),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE6E6E6),
-                            borderRadius: BorderRadius.all(Radius.circular(20)),
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                              width: 1,
+                            ),
                           ),
                           child: AuthField(
-                            hintText: "Password",
                             controller: passController,
+                            hintText: "Password",
                             isObscureText: true,
+                            errorText: "Enter password",
                           ),
                         ),
 
                         const SizedBox(height: 15),
 
-                        TextButton(
-                          onPressed: () {
-                            // TODO: Navigate to forgot password page
-                            print("Forgot Password pressed");
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size(0, 0),
-                          ),
-                          child: Text(
-                            "Forgot password?",
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              // TODO: Forgot password
+                            },
+                            child: Text(
+                              "Forgot password?",
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
@@ -171,24 +185,50 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             onPressed: authState.loading
                                 ? null
                                 : () {
-                                    // Run form validators
+                                    // Required field validation
                                     if (!(formKey.currentState?.validate() ??
                                         false)) {
                                       return;
                                     }
 
-                                    final email = emailController.text.trim();
+                                    final email = emailController.text
+                                        .trim()
+                                        .toLowerCase();
                                     final password = passController.text.trim();
 
-                                    // Call notifier to login
+                                    // Domain validation → SnackBar
+                                    final emailRegex = RegExp(
+                                      r'^[a-zA-Z0-9._%+-]+@(muj|jaipur)\.manipal\.edu$',
+                                    );
+
+                                    if (!emailRegex.hasMatch(email)) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Use your Manipal email (muj / jaipur)',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    // Call API
                                     ref
                                         .read(authNotifierProvider.notifier)
                                         .login(email, password);
                                   },
+
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Theme.of(
                                 context,
                               ).colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  8,
+                                ), // 👈 here
+                              ),
                             ),
                             child: authState.loading
                                 ? const SizedBox(
@@ -213,9 +253,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
