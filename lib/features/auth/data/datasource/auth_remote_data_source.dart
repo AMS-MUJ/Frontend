@@ -80,30 +80,31 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw ServerException('Unexpected response format');
       }
     }
-    final body = decodedBody;
+    // Parse JSON body
+    final body = decodedBody as Map<String, dynamic>;
 
-    // Build AuthModel from JSON (the model is tolerant about nested user/role)
-    final authModel = AuthModel.fromJson(body);
+    // Validate success flag
+    if (body['success'] != true) {
+      final msg = body['data']?.toString() ?? 'Login failed';
+      throw ServerException(msg);
+    }
 
-    // Validate token existence
+    // Extract auth payload (token + user)
+    if (body['message'] is! Map<String, dynamic>) {
+      throw ServerException('Invalid auth response structure');
+    }
+
+    final authJson = body['message'] as Map<String, dynamic>;
+
+    // Build AuthModel
+    final authModel = AuthModel.fromJson(authJson);
+
+    // Validate token
     if (authModel.accessToken.isEmpty) {
-      // Provide backend message if available
-      final backendMessage = (body['message'] ?? body['msg'] ?? '').toString();
-      throw ServerException(
-        backendMessage.isNotEmpty
-            ? backendMessage
-            : 'Token missing in response',
-      );
+      throw ServerException('Token missing in response');
     }
-    // Validate status — only allow approved/active
-    if (authModel.status != AuthStatus.active) {
-      final backendMessage = (body['message'] ?? body['msg'] ?? '').toString();
-      throw ServerException(
-        backendMessage.isNotEmpty
-            ? backendMessage
-            : 'Login not approved (status: ${authModel.status})',
-      );
-    }
+
+    // ✅ SUCCESS
     return authModel;
   }
 }

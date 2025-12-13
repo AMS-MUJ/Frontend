@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   static route() => MaterialPageRoute(builder: (context) => const LoginPage());
+
   const LoginPage({super.key});
 
   @override
@@ -116,6 +117,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           child: AuthField(
                             hintText: "Email",
                             controller: emailController,
+                            isEmail: true,
                           ),
                         ),
 
@@ -169,21 +171,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             onPressed: authState.loading
                                 ? null
                                 : () {
-                                    if (formKey.currentState?.validate() ??
-                                        false) {
-                                      final email = emailController.text.trim();
-                                      final password = passController.text
-                                          .trim();
-                                      // call notifier to login
-                                      ref
-                                          .read(authNotifierProvider.notifier)
-                                          .login(email, password);
-                                    } else {
-                                      // Basic validation: show error
-                                      _showError(
-                                        'Please enter email and password',
-                                      );
+                                    // Run form validators
+                                    if (!(formKey.currentState?.validate() ??
+                                        false)) {
+                                      return;
                                     }
+
+                                    final email = emailController.text.trim();
+                                    final password = passController.text.trim();
+
+                                    // Call notifier to login
+                                    ref
+                                        .read(authNotifierProvider.notifier)
+                                        .login(email, password);
                                   },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Theme.of(
