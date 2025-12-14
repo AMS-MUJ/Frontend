@@ -10,18 +10,7 @@ import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/usecases/login_usercase.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/pages/login_page.dart';
-
-class StudentHomePage extends StatelessWidget {
-  const StudentHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Student Home')),
-      body: const Center(child: Text('Student Home')),
-    );
-  }
-}
+import 'features/student/homepage.dart';
 
 void main() {
   // --- Create low-level dependencies ---
@@ -66,7 +55,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginPage(),
         '/teacher': (context) => const Thomepage(),
-        '/student': (context) => const StudentHomePage(),
+        '/student': (context) => const Shomepage(),
       },
     );
   }

@@ -3,8 +3,8 @@ import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Thomepage extends ConsumerWidget {
-  const Thomepage({super.key});
+class Shomepage extends ConsumerWidget {
+  const Shomepage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,7 +22,7 @@ class Thomepage extends ConsumerWidget {
               (_) => false,
             );
           },
-          child: const Text("Logout from teacher"),
+          child: const Text("Logout from student"),
         ),
       ),
     );
