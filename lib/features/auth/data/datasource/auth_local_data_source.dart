@@ -8,7 +8,9 @@ import '../models/auth_model.dart';
 /// Thrown when reading/writing from secure storage fails.
 class CacheException implements Exception {
   final String message;
+
   CacheException([this.message = 'Cache error']);
+
   @override
   String toString() => 'CacheException: $message';
 }
@@ -52,8 +54,6 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
       final Map<String, dynamic> map = jsonDecode(raw) as Map<String, dynamic>;
       return AuthModel.fromJson(map);
     } catch (e) {
-      // If parsing fails, clear the corrupted cache and surface a CacheException
-      // (or return null depending on how permissive you want to be).
       await clear();
       throw CacheException('Failed to read cached auth: ${e.toString()}');
     }

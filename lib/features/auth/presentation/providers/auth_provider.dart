@@ -56,20 +56,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Try to load cached (signed-in) auth from local storage.
   /// Use this at app startup to restore session.
   Future<void> loadCachedAuth() async {
-    state = state.copyWith(loading: true, failure: null);
+    // Start loading
+    // state = state.copyWith(loading: true, failure: null);
+
     try {
-      final opt = await repository.getSignedInAuth();
-      opt.match(
-        () {
-          // None -> not signed in
+      final result = await repository.getSignedInAuth();
+
+      result.fold(
+        (failure) {
+          // No cached auth / error → logged out
           state = state.copyWith(loading: false, auth: null);
         },
-        (Auth a) {
-          state = state.copyWith(loading: false, auth: a, failure: null);
+        (auth) {
+          //Cached auth may be null or non-null
+          state = state.copyWith(loading: false, auth: auth);
         },
       );
     } catch (e) {
-      // treat as no cached auth (do not crash the app)
+      // 🚨 Absolute safety net
       state = state.copyWith(loading: false, auth: null);
     }
   }

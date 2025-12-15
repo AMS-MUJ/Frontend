@@ -1,11 +1,10 @@
-// lib/features/auth/data/repositories/auth_repository_impl.dart
-
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasource/auth_local_data_source.dart';
 import '../datasource/auth_remote_data_source.dart';
+import '../models/auth_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remote;
@@ -19,15 +18,12 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      final Auth authModel = await remote.login(
+      final AuthModel authModel = await remote.login(
         email: email,
         password: password,
-      );
-      // Cache the successful auth (token + user + status)
-      await local.cacheAuth(
-        authModel as dynamic,
-      ); // safe: remote returns AuthModel
-      return Right(authModel);
+      ); // Cache the successful auth (token + user + status)
+      await local.cacheAuth(authModel);
+      return Right(authModel); // AuthModel extends Auth
     } on ServerException catch (e) {
       return Left(Failure(e.message));
     } on CacheException catch (e) {
@@ -39,16 +35,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Option<Auth>> getSignedInAuth() async {
+  Future<Either<Failure, Auth?>> getSignedInAuth() async {
     try {
-      final cached = await local.getCachedAuth();
-      if (cached == null) return const None();
-      return Some(cached);
-    } on CacheException {
-      // If cache is corrupted/unreadable, consider the user not signed-in
-      return const None();
+      final auth = await local.getCachedAuth(); // may be null
+      return Right(auth);
     } catch (_) {
-      return const None();
+      return Left(Failure('Cache read failed'));
     }
   }
 

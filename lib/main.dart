@@ -9,8 +9,8 @@ import 'features/auth/data/datasource/auth_remote_data_source.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/usecases/login_usercase.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
-import 'features/auth/presentation/pages/login_page.dart';
 import 'features/student/homepage.dart';
+import 'features/navigation/auth_gate.dart';
 
 void main() {
   // --- Create low-level dependencies ---
@@ -43,19 +43,29 @@ void main() {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
+
+  @override
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    ref.read(authNotifierProvider.notifier).loadCachedAuth();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ams_try2',
       theme: appTheme,
-      initialRoute: '/',
+      home: const AuthGate(),
       routes: {
-        '/': (context) => const LoginPage(),
-        '/teacher': (context) => const Thomepage(),
-        '/student': (context) => const Shomepage(),
+        '/teacher': (_) => const Thomepage(),
+        '/student': (_) => const Shomepage(),
       },
     );
   }

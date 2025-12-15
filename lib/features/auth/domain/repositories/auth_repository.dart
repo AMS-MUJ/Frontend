@@ -8,7 +8,7 @@ abstract interface class AuthRepository {
     required String password,
   });
 
-  Future<Option<Auth>> getSignedInAuth();
+  Future<Either<Failure, Auth?>> getSignedInAuth();
 
   Future<void> logout();
 }
