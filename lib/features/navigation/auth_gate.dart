@@ -1,7 +1,7 @@
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
 import 'package:ams_try2/features/student/homepage.dart';
-import 'package:ams_try2/features/teacher/homepage.dart';
+import 'package:ams_try2/features/teacher/presentation/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

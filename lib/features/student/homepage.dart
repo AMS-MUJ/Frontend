@@ -12,7 +12,6 @@ class Shomepage extends ConsumerWidget {
       body: Center(
         child: TextButton(
           onPressed: () async {
-            // 1️⃣ LOGOUT
             await ref.read(authNotifierProvider.notifier).logout();
 
             // 2️⃣ CLEAR STACK & GO TO LOGIN

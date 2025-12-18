@@ -1,4 +1,4 @@
-import 'package:ams_try2/features/teacher/homepage.dart';
+import 'package:ams_try2/features/teacher/presentation/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -60,6 +60,7 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'ams_try2',
       theme: appTheme,
       home: const AuthGate(),

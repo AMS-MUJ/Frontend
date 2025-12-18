@@ -1,8 +1,5 @@
-// lib/features/auth/data/datasources/auth_remote_data_source.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../domain/entities/auth.dart';
 import '../models/auth_model.dart';
 
 /// Thrown when the remote call fails or the backend returns a non-approved result.
@@ -81,7 +78,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
     }
     // Parse JSON body
-    final body = decodedBody as Map<String, dynamic>;
+    final body = decodedBody;
 
     // Validate success flag
     if (body['success'] != true) {

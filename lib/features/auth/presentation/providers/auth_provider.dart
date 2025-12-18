@@ -1,11 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth.dart';
-import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/login_usercase.dart';
 
-/// Simple immutable state for authentication
 class AuthState {
   final bool loading;
   final Auth? auth;
