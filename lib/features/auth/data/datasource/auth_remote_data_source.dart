@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:ams_try2/core/config/app_config.dart';
+import 'package:ams_try2/core/network/api_routes.dart';
 import 'package:http/http.dart' as http;
 import '../models/auth_model.dart';
 
@@ -25,16 +27,17 @@ abstract class AuthRemoteDataSource {
 /// Implementation that uses `http.Client`.
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final http.Client client;
-  final String baseUrl;
 
-  AuthRemoteDataSourceImpl({required this.client, required this.baseUrl});
+  AuthRemoteDataSourceImpl({required this.client});
 
   @override
   Future<AuthModel> login({
     required String email,
     required String password,
   }) async {
-    final uri = Uri.parse('$baseUrl/login'); // adjust endpoint if needed
+    final uri = Uri.parse(
+      '${AppConfig.baseUrl}${ApiRoutes.login}',
+    ); // adjust endpoint if needed
 
     http.Response response;
     try {
@@ -101,7 +104,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw ServerException('Token missing in response');
     }
 
-    // ✅ SUCCESS
     return authModel;
   }
 }

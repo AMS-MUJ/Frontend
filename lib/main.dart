@@ -1,38 +1,50 @@
-import 'package:ams_try2/features/teacher/presentation/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'core/theme/app_pallete.dart';
+import 'features/navigation/auth_gate.dart';
+import 'features/teacher/presentation/homepage.dart';
+import 'features/student/homepage.dart';
+
+// Auth imports
 import 'features/auth/data/datasource/auth_local_data_source.dart';
 import 'features/auth/data/datasource/auth_remote_data_source.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/usecases/login_usercase.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
-import 'features/student/homepage.dart';
-import 'features/navigation/auth_gate.dart';
 
-void main() {
-  // --- Create low-level dependencies ---
+// Shared storage
+import 'core/storage/secure_storage.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    print(
+      "Warning: .env file not found. Ensure it exists in root and is added to pubspec.yaml",
+    );
+  }
+
+  // Low-level dependencies
   final client = http.Client();
-  const baseUrl = 'http://10.0.2.2:5000/api/v1'; // <-- update to your backend
-  final secureStorage = const FlutterSecureStorage();
 
-  // --- Create data sources ---
-  final remote = AuthRemoteDataSourceImpl(client: client, baseUrl: baseUrl);
+  // Data sources
+  final remote = AuthRemoteDataSourceImpl(client: client);
   final local = AuthLocalDataSourceImpl(secureStorage: secureStorage);
 
-  // --- Create repository & use case ---
+  // Repository & use case
   final repo = AuthRepositoryImpl(remote: remote, local: local);
   final loginUseCase = LoginUseCase(repo);
 
-  // --- Create the AuthNotifier instance (kept alive for app lifetime) ---
+  // Auth notifier (single instance)
   final authNotifierInstance = AuthNotifier(
     loginUseCase: loginUseCase,
     repository: repo,
   );
 
-  // --- 5. Run app with ProviderScope and override the provider ---
   runApp(
     ProviderScope(
       overrides: [
@@ -54,6 +66,7 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
+    // Load cached auth once app starts
     ref.read(authNotifierProvider.notifier).loadCachedAuth();
   }
 
@@ -61,7 +74,7 @@ class _MyAppState extends ConsumerState<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ams_try2',
+      title: 'AMS',
       theme: appTheme,
       home: const AuthGate(),
       routes: {

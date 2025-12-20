@@ -1,3 +1,4 @@
+import 'package:ams_try2/core/storage/secure_storage.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth.dart';
@@ -21,7 +22,8 @@ class AuthRepositoryImpl implements AuthRepository {
       final AuthModel authModel = await remote.login(
         email: email,
         password: password,
-      ); // Cache the successful auth (token + user + status)
+      );
+      await secureStorage.write(key: 'token', value: authModel.accessToken);
       await local.cacheAuth(authModel);
       return Right(authModel); // AuthModel extends Auth
     } on ServerException catch (e) {
@@ -46,7 +48,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
-    // Clear local cache. If you have a remote logout endpoint, call it here too.
     await local.clear();
+    await secureStorage.delete(key: 'token');
   }
 }

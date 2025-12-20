@@ -1,3 +1,5 @@
+import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
+import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
 import 'package:ams_try2/features/teacher/components/lecture_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,8 +24,15 @@ class Thomepage extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.person, size: 36),
-            onPressed: () {
-              debugPrint("go to dashboard");
+            onPressed: () async {
+              await ref.read(authNotifierProvider.notifier).logout();
+
+              // 2️⃣ CLEAR STACK & GO TO LOGIN
+              Navigator.pushAndRemoveUntil(
+                context,
+                LoginPage.route(),
+                (_) => false,
+              );
             },
           ),
           const SizedBox(width: 15),
