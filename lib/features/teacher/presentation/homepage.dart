@@ -101,22 +101,25 @@ class Thomepage extends ConsumerWidget {
 
               data: (_) {
                 if (filteredSchedules.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No classes available',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  );
+                  return const Center(child: Text('No classes available'));
                 }
 
-                return ListView.builder(
-                  itemCount: filteredSchedules.length,
-                  itemBuilder: (context, index) {
-                    return LectureCard(
-                      schedule: filteredSchedules[index],
-                      mode: _mapFilterToCardMode(selectedFilter),
-                    );
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    // 🔹 Force API refetch
+                    ref.invalidate(homeProvider);
+                    await Future.delayed(const Duration(milliseconds: 500));
                   },
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: filteredSchedules.length,
+                    itemBuilder: (context, index) {
+                      return LectureCard(
+                        schedule: filteredSchedules[index],
+                        mode: _mapFilterToCardMode(selectedFilter),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -134,7 +137,6 @@ class Thomepage extends ConsumerWidget {
       case HomeFilter.upcoming:
         return LectureCardMode.upcoming;
       case HomeFilter.all:
-      default:
         return LectureCardMode.all;
     }
   }

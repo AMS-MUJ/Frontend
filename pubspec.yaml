@@ -15,6 +15,8 @@ dependencies:
   flutter_secure_storage: ^8.0.0
   flutter_riverpod: ^2.6.0
   flutter_dotenv:
+  image_picker: ^1.0.7
+  permission_handler: ^11.3.0
 
 
 dev_dependencies:

@@ -1,12 +1,87 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../domain/entities/schedule.dart';
 import '../presentation/lecture_card_mode.dart';
 
-class LectureCard extends StatelessWidget {
+class LectureCard extends StatefulWidget {
   final Schedule schedule;
   final LectureCardMode mode;
 
   const LectureCard({super.key, required this.schedule, required this.mode});
+
+  @override
+  State<LectureCard> createState() => _LectureCardState();
+}
+
+class _LectureCardState extends State<LectureCard> {
+  final ImagePicker _picker = ImagePicker();
+  final List<File> _photos = [];
+  bool _isSubmitting = false;
+  bool _attendanceSubmitted = false;
+  static const int _maxPhotos = 6;
+
+  Schedule get schedule => widget.schedule;
+
+  /// 🔹 Open camera and take photo
+  Future<void> _takePhoto() async {
+    // 🔒 Block if attendance already submitted
+    if (_attendanceSubmitted) {
+      _showSnack('Attendance already marked for this lecture');
+      return;
+    }
+
+    // 🔒 Block if max photos reached
+    if (_photos.length >= _maxPhotos) {
+      _showSnack('Maximum $_maxPhotos photos allowed');
+      return;
+    }
+
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+
+    if (image == null) return;
+
+    setState(() {
+      _photos.add(File(image.path));
+    });
+  }
+
+  /// 🔹 Confirmation dialog
+  Future<void> _confirm({
+    required String title,
+    required String message,
+    required VoidCallback onConfirm,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      onConfirm();
+    }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,37 +97,31 @@ class LectureCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔹 TITLE + STATUS
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        schedule.subject,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    schedule.subject,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 _StatusText(status),
               ],
             ),
+
             const SizedBox(height: 4),
+
             Text(
               schedule.courseCode,
               style: const TextStyle(color: Colors.grey),
             ),
-
-            const SizedBox(height: 4),
-
             Text(
-              "Sections: ${schedule.section}",
+              "Section: ${schedule.section}",
               style: const TextStyle(color: Colors.grey),
             ),
 
@@ -68,37 +137,142 @@ class LectureCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            /// 🔹 ACTION BUTTONS
-            _buildActions(),
+            /// 🔹 PHOTO PREVIEW + COUNT (CURRENT CLASS ONLY)
+            if (widget.mode == LectureCardMode.current &&
+                _photos.isNotEmpty) ...[
+              Text(
+                'Photos: ${_photos.length} / $_maxPhotos',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 80,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _photos.length,
+                  itemBuilder: (_, i) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Image.file(
+                      _photos[i],
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
+            /// 🔹 ACTIONS
+            _buildActions(status),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActions() {
-    switch (mode) {
+  Widget _buildActions(LectureStatus status) {
+    switch (widget.mode) {
+      /// 🔹 CURRENT CLASS
       case LectureCardMode.current:
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return Column(
           children: [
-            _ActionButton(
-              label: "Mark\nAttendance",
-              onTap: () => print("Mark Attendance"),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _ActionButton(
+                  label: "Upload\nPhoto",
+                  enabled:
+                      status == LectureStatus.inProgress &&
+                      !_attendanceSubmitted,
+                  onTap: _takePhoto,
+                ),
+                _ActionButton(
+                  label: "Report\nMass Bunk",
+                  enabled:
+                      status == LectureStatus.inProgress &&
+                      !_attendanceSubmitted,
+                  onTap: () {
+                    _confirm(
+                      title: 'Report Mass Bunk',
+                      message: 'Are you sure you want to report mass bunk?',
+                      onConfirm: () {
+                        setState(() {
+                          _attendanceSubmitted = true;
+                        });
+                        print('Report Mass Bunk API call');
+                      },
+                    );
+                  },
+                ),
+                _ActionButton(
+                  label: "Mark\nAll Present",
+                  enabled:
+                      status == LectureStatus.inProgress &&
+                      !_attendanceSubmitted,
+                  onTap: () {
+                    _confirm(
+                      title: 'Mark All Present',
+                      message:
+                          'Are you sure you want to mark all students present?',
+                      onConfirm: () {
+                        setState(() {
+                          _attendanceSubmitted = true;
+                        });
+                        print('Mark All Present API call');
+                      },
+                    );
+                  },
+                ),
+              ],
             ),
-            _ActionButton(
-              label: "Report\nMass Bunk",
-              onTap: () => print("Report Mass Bunk"),
-            ),
-            _ActionButton(
-              label: "Mark\nAll Present",
-              onTap: () => print("Mark All Present"),
-            ),
+
+            /// 🔹 SUBMIT BUTTON
+            if (_photos.isNotEmpty && !_attendanceSubmitted)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: ElevatedButton(
+                  onPressed: _isSubmitting
+                      ? null
+                      : () async {
+                          setState(() {
+                            _isSubmitting = true;
+                          });
+
+                          // 🔹 Simulate API call delay
+                          await Future.delayed(const Duration(seconds: 2));
+
+                          print('Submitting attendance');
+                          print({
+                            'courseCode': schedule.courseCode,
+                            'section': schedule.section,
+                            'photoCount': _photos.length,
+                          });
+
+                          setState(() {
+                            _isSubmitting = false;
+                            _attendanceSubmitted = true;
+                          });
+                        },
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Submit Attendance'),
+                ),
+              ),
           ],
         );
 
+      /// 🔹 ALL / UPCOMING
       case LectureCardMode.all:
       case LectureCardMode.upcoming:
         return Align(
@@ -106,14 +280,23 @@ class LectureCard extends StatelessWidget {
           child: _ActionButton(
             label: "Cancel Lecture",
             isDanger: true,
-            onTap: () => print("Cancel Lecture"),
+            enabled: status == LectureStatus.pending,
+            onTap: () {
+              _confirm(
+                title: 'Cancel Lecture',
+                message: 'Are you sure you want to cancel this lecture?',
+                onConfirm: () {
+                  print('Cancel Lecture API call');
+                },
+              );
+            },
           ),
         );
     }
   }
 }
 
-/// 🔹 Status text shown at top-right
+/// 🔹 Status text
 class _StatusText extends StatelessWidget {
   final LectureStatus status;
 
@@ -121,25 +304,15 @@ class _StatusText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    late final String text;
-    late final Color color;
+    final text = {
+      LectureStatus.pending: 'Pending',
+      LectureStatus.inProgress: 'In Progress',
+      LectureStatus.completed: 'Completed',
+    }[status]!;
 
-    switch (status) {
-      case LectureStatus.inProgress:
-        text = 'In Progress';
-        color = Colors.green;
-        break;
-
-      case LectureStatus.pending:
-        text = 'Pending';
-        color = Colors.black;
-        break;
-
-      case LectureStatus.completed:
-        text = 'Completed';
-        color = Colors.black;
-        break;
-    }
+    final color = status == LectureStatus.inProgress
+        ? Colors.green
+        : Colors.black;
 
     return Text(
       text,
@@ -148,7 +321,7 @@ class _StatusText extends StatelessWidget {
   }
 }
 
-/// 🔹 Small info widget
+/// 🔹 Info item
 class _InfoItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -159,35 +332,41 @@ class _InfoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 24, color: Colors.grey),
+        Icon(icon, size: 22, color: Colors.grey),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 15)),
+        Text(label, style: const TextStyle(fontSize: 14)),
       ],
     );
   }
 }
 
-/// 🔹 Action button widget
+/// 🔹 Action button
 class _ActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool isDanger;
+  final bool enabled;
 
   const _ActionButton({
     required this.label,
     required this.onTap,
     this.isDanger = false,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(foregroundColor: Colors.black),
+      onPressed: enabled ? onTap : null,
+      style: TextButton.styleFrom(
+        foregroundColor: enabled
+            ? (isDanger ? Colors.red : Colors.black)
+            : Colors.grey,
+      ),
       child: Text(
         label,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 16),
+        style: const TextStyle(fontSize: 15),
       ),
     );
   }

@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../domain/usecases/login_usercase.dart';
+import '../../domain/usecases/login_usecase.dart';
 
 class AuthState {
   final bool loading;
