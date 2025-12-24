@@ -1,5 +1,6 @@
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
+import 'package:ams_try2/features/dashboard/ProfilePage.dart';
 import 'package:ams_try2/features/teacher/components/lecture_card.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/home_filter.dart';
@@ -37,13 +38,9 @@ class Thomepage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.person, size: 36),
             onPressed: () async {
-              await ref.read(authNotifierProvider.notifier).logout();
-
-              Navigator.pushAndRemoveUntil(
-                context,
-                LoginPage.route(),
-                (_) => false,
-              );
+              // await ref.read(authNotifierProvider.notifier).logout();
+              //
+              Navigator.push(context, ProfilePage.route());
             },
           ),
           const SizedBox(width: 15),
