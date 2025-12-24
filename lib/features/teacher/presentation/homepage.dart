@@ -1,6 +1,5 @@
-import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
-import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
-import 'package:ams_try2/features/dashboard/ProfilePage.dart';
+import 'package:ams_try2/core/navigation/slide_page_route.dart';
+import 'package:ams_try2/features/dashboard/TeacherProfilePage.dart';
 import 'package:ams_try2/features/teacher/components/lecture_card.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/home_filter.dart';
@@ -12,6 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/home_provider.dart';
 
 class Thomepage extends ConsumerWidget {
+  static Route<void> route() =>
+      SlidePageRoute(child: const Thomepage(), direction: AxisDirection.left);
+
   const Thomepage({super.key});
 
   @override
@@ -38,9 +40,7 @@ class Thomepage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.person, size: 36),
             onPressed: () async {
-              // await ref.read(authNotifierProvider.notifier).logout();
-              //
-              Navigator.push(context, ProfilePage.route());
+              Navigator.push(context, TProfilePage.route());
             },
           ),
           const SizedBox(width: 15),

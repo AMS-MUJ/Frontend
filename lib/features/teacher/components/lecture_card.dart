@@ -359,14 +359,12 @@ class _ActionButton extends StatelessWidget {
     return TextButton(
       onPressed: enabled ? onTap : null,
       style: TextButton.styleFrom(
-        foregroundColor: enabled
-            ? (isDanger ? Colors.red : Colors.black)
-            : Colors.grey,
+        foregroundColor: enabled ? Colors.black : Colors.grey,
       ),
       child: Text(
         label,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 15),
+        style: const TextStyle(fontSize: 18),
       ),
     );
   }

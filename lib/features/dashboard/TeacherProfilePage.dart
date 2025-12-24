@@ -1,13 +1,16 @@
+import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ProfilePage extends ConsumerWidget {
-  static Route<void> route() =>
-      MaterialPageRoute(builder: (_) => const ProfilePage());
+class TProfilePage extends ConsumerWidget {
+  static Route<void> route() => SlidePageRoute(
+    child: const TProfilePage(),
+    direction: AxisDirection.left,
+  );
 
-  const ProfilePage({super.key});
+  const TProfilePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

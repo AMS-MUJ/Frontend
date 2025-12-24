@@ -1,11 +1,14 @@
+import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/components/auth_field.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
+import 'package:ams_try2/features/student/homepage.dart';
+import 'package:ams_try2/features/teacher/presentation/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   static Route<void> route() =>
-      MaterialPageRoute(builder: (_) => const LoginPage());
+      SlidePageRoute(child: const LoginPage(), direction: AxisDirection.left);
 
   const LoginPage({super.key});
 
@@ -39,9 +42,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (next.auth != null && previous?.auth == null) {
         final role = next.auth!.user.role.toLowerCase();
         if (role == 'teacher') {
-          Navigator.pushReplacementNamed(context, '/teacher');
+          Navigator.pushReplacement(
+            context,
+            SlidePageRoute(
+              child: const Thomepage(),
+              direction: AxisDirection.right,
+            ),
+          );
         } else {
-          Navigator.pushReplacementNamed(context, '/student');
+          Navigator.pushReplacement(
+            context,
+            SlidePageRoute(child: const Shomepage()),
+          );
         }
       }
     });
