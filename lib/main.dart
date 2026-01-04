@@ -1,12 +1,10 @@
+import 'package:ams_try2/features/splash/splash_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/theme/app_pallete.dart';
-import 'features/navigation/auth_gate.dart';
-import 'features/teacher/presentation/homepage.dart';
-import 'features/student/homepage.dart';
 
 // Auth imports
 import 'features/auth/data/datasource/auth_local_data_source.dart';
@@ -76,11 +74,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       debugShowCheckedModeBanner: false,
       title: 'AMS',
       theme: appTheme,
-      home: const AuthGate(),
-      routes: {
-        '/teacher': (_) => const Thomepage(),
-        '/student': (_) => const Shomepage(),
-      },
+      home: SplashPage(),
     );
   }
 }

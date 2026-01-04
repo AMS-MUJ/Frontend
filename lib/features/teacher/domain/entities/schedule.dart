@@ -1,54 +1,33 @@
+enum LectureStatus { pending, inProgress, completed }
+
 class Schedule {
+  final String lectureId;
   final String subject;
   final String courseCode;
   final String section;
   final String time;
   final String room;
   final int totalStudents;
+  final DateTime startDateTime;
+  final DateTime endDateTime;
+  final bool attendanceMarked;
+  final DateTime? attendanceMarkedAt;
 
-  Schedule({
+  const Schedule({
+    required this.lectureId,
     required this.subject,
     required this.courseCode,
     required this.section,
     required this.time,
     required this.room,
     required this.totalStudents,
+    required this.startDateTime,
+    required this.endDateTime,
+    required this.attendanceMarked,
+    required this.attendanceMarkedAt,
   });
 
-  // Extract start time
-  DateTime get startDateTime {
-    final start = time.split('-')[0].trim(); // "10:00"
-    final parts = start.split(':');
-    final now = DateTime.now();
-
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-      int.parse(parts[0]),
-      int.parse(parts[1]),
-    );
-  }
-
-  /// Extract end time
-  DateTime get endDateTime {
-    final end = time.split('-')[1].trim(); // "11:00"
-    final parts = end.split(':');
-    final now = DateTime.now();
-
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-      int.parse(parts[0]),
-      int.parse(parts[1]),
-    );
-  }
-}
-
-enum LectureStatus { pending, inProgress, completed }
-
-extension LectureStatusX on Schedule {
+  /// 🔹 Derived lecture status (single source of truth)
   LectureStatus get lectureStatus {
     final now = DateTime.now();
 

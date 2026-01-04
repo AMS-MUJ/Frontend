@@ -4,25 +4,39 @@ class UserModel extends User {
   UserModel({
     required String id,
     required String email,
-    required String name,
     required String role,
-  }) : super(id: id, email: email, name: name, role: role);
+    String? name,
+    String? designation,
+  }) : super(
+         id: id,
+         email: email,
+         role: role,
+         name: name,
+         designation: designation,
+       );
 
-  /// Build UserModel from backend JSON.
-  factory UserModel.fromJson(Map<String, dynamic> json) {
+  factory UserModel.fromJson(
+    Map<String, dynamic> json, {
+    Map<String, dynamic>? profileJson,
+  }) {
     return UserModel(
-      id: (json['id'] ?? json['user_id'] ?? '').toString(),
-      email: (json['email'] ?? '').toString(),
-      name: (json['name'] ?? '').toString(),
-      role: (json['role'] ?? '').toString(),
+      id: json['id'].toString(),
+      email: json['email'].toString(),
+      role: json['role'].toString(),
+
+      // Optional profile fields (if backend sends them)
+      name: profileJson?['name']?.toString(),
+      designation:
+          profileJson?['designation']?.toString() ??
+          profileJson?['Designation']?.toString(),
     );
   }
 
-  /// Convert model back to JSON (useful for caching).
   Map<String, dynamic> toJson() => {
     'id': id,
     'email': email,
-    'name': name,
     'role': role,
+    'name': name,
+    'designation': designation,
   };
 }

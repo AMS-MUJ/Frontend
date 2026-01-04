@@ -1,6 +1,4 @@
 import 'package:ams_try2/core/network/api_client.dart';
-import 'package:ams_try2/features/teacher/data/datasources/home_data_source.dart';
-import 'package:ams_try2/features/teacher/data/datasources/home_fake_datasource.dart';
 import 'package:ams_try2/features/teacher/data/datasources/home_remote_datasource.dart';
 import 'package:ams_try2/features/teacher/data/repositories/home_repository_impl.dart';
 import 'package:ams_try2/features/teacher/domain/repository/home_repository.dart';

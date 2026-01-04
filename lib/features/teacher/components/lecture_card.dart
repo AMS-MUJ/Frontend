@@ -1,40 +1,48 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../domain/entities/schedule.dart';
 import '../presentation/lecture_card_mode.dart';
+import '../presentation/providers/attendance_provider.dart';
 
-class LectureCard extends StatefulWidget {
+class LectureCard extends ConsumerStatefulWidget {
   final Schedule schedule;
   final LectureCardMode mode;
 
   const LectureCard({super.key, required this.schedule, required this.mode});
 
   @override
-  State<LectureCard> createState() => _LectureCardState();
+  ConsumerState<LectureCard> createState() => _LectureCardState();
 }
 
-class _LectureCardState extends State<LectureCard> {
+class _LectureCardState extends ConsumerState<LectureCard> {
   final ImagePicker _picker = ImagePicker();
-  final List<File> _photos = [];
-  bool _isSubmitting = false;
-  bool _attendanceSubmitted = false;
   static const int _maxPhotos = 6;
 
   Schedule get schedule => widget.schedule;
 
-  /// 🔹 Open camera and take photo
+  AttendanceNotifier get notifier =>
+      ref.read(attendanceProvider(schedule.lectureId).notifier);
+
+  AttendanceState get attendance =>
+      ref.watch(attendanceProvider(schedule.lectureId));
+
+  /// 📸 Capture photo
   Future<void> _takePhoto() async {
-    // 🔒 Block if attendance already submitted
-    if (_attendanceSubmitted) {
-      _showSnack('Attendance already marked for this lecture');
+    if (schedule.lectureStatus != LectureStatus.inProgress) {
+      _snack('Lecture is not in progress');
       return;
     }
 
-    // 🔒 Block if max photos reached
-    if (_photos.length >= _maxPhotos) {
-      _showSnack('Maximum $_maxPhotos photos allowed');
+    if (attendance.submitted) {
+      _snack('Attendance already submitted');
+      return;
+    }
+
+    if (attendance.photoPaths.length >= _maxPhotos) {
+      _snack('Maximum $_maxPhotos photos allowed');
       return;
     }
 
@@ -45,18 +53,16 @@ class _LectureCardState extends State<LectureCard> {
 
     if (image == null) return;
 
-    setState(() {
-      _photos.add(File(image.path));
-    });
+    notifier.addPhoto(image.path);
   }
 
-  /// 🔹 Confirmation dialog
+  /// ✅ Confirmation dialog
   Future<void> _confirm({
     required String title,
     required String message,
     required VoidCallback onConfirm,
   }) async {
-    final result = await showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(title),
@@ -74,29 +80,33 @@ class _LectureCardState extends State<LectureCard> {
       ),
     );
 
-    if (result == true) {
-      onConfirm();
-    }
+    if (ok == true) onConfirm();
   }
 
-  void _showSnack(String msg) {
+  void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  @override
+  void dispose() {
+    notifier.clear(); // 🧹 prevent stale state
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final status = schedule.lectureStatus;
+    final canAct = status == LectureStatus.inProgress && !attendance.submitted;
 
     return Card(
-      color: Colors.white70,
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 3,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// 🔹 TITLE + STATUS
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -115,13 +125,12 @@ class _LectureCardState extends State<LectureCard> {
             ),
 
             const SizedBox(height: 4),
-
             Text(
               schedule.courseCode,
               style: const TextStyle(color: Colors.grey),
             ),
             Text(
-              "Section: ${schedule.section}",
+              'Section: ${schedule.section}',
               style: const TextStyle(color: Colors.grey),
             ),
 
@@ -139,11 +148,11 @@ class _LectureCardState extends State<LectureCard> {
 
             const SizedBox(height: 14),
 
-            /// 🔹 PHOTO PREVIEW + COUNT (CURRENT CLASS ONLY)
+            /// 🔹 PHOTO PREVIEW + DELETE
             if (widget.mode == LectureCardMode.current &&
-                _photos.isNotEmpty) ...[
+                attendance.photoPaths.isNotEmpty) ...[
               Text(
-                'Photos: ${_photos.length} / $_maxPhotos',
+                'Photos (${attendance.photoPaths.length}/$_maxPhotos)',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
@@ -151,14 +160,34 @@ class _LectureCardState extends State<LectureCard> {
                 height: 80,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _photos.length,
+                  itemCount: attendance.photoPaths.length,
                   itemBuilder: (_, i) => Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: Image.file(
-                      _photos[i],
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
+                    child: Stack(
+                      children: [
+                        Image.file(
+                          File(attendance.photoPaths[i]),
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: () => notifier.removePhoto(i),
+                            child: const CircleAvatar(
+                              radius: 10,
+                              backgroundColor: Colors.black54,
+                              child: Icon(
+                                Icons.close,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -167,136 +196,103 @@ class _LectureCardState extends State<LectureCard> {
             ],
 
             /// 🔹 ACTIONS
-            _buildActions(status),
+            if (widget.mode == LectureCardMode.current)
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _ActionButton(
+                        label: 'Upload\nPhoto',
+                        enabled:
+                            canAct && attendance.photoPaths.length < _maxPhotos,
+                        onTap: _takePhoto,
+                      ),
+                      _ActionButton(
+                        label: 'Report\nMass Bunk',
+                        enabled: canAct,
+                        onTap: () => _confirm(
+                          title: 'Report Mass Bunk',
+                          message: 'Are you sure you want to report mass bunk?',
+                          onConfirm: notifier.submit,
+                        ),
+                      ),
+                      _ActionButton(
+                        label: 'Mark\nAll Present',
+                        enabled: canAct,
+                        onTap: () => _confirm(
+                          title: 'Mark All Present',
+                          message: 'Are you sure you want to mark all present?',
+                          onConfirm: notifier.submit,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  /// 🔹 SUBMIT
+                  if (attendance.photoPaths.isNotEmpty && !attendance.submitted)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: ElevatedButton(
+                        onPressed: attendance.submitting
+                            ? null
+                            : () => _confirm(
+                                title: 'Submit Attendance',
+                                message:
+                                    'Once submitted, attendance cannot be changed.',
+                                onConfirm: notifier.submit,
+                              ),
+                        child: attendance.submitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Submit Attendance'),
+                      ),
+                    ),
+
+                  if (attendance.submitted)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 10),
+                      child: Text(
+                        'Attendance Submitted',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+            /// 🔹 CANCEL (ALL / UPCOMING)
+            if (widget.mode != LectureCardMode.current)
+              Align(
+                alignment: Alignment.center,
+                child: _ActionButton(
+                  label: 'Cancel Lecture',
+                  isDanger: true,
+                  enabled: status == LectureStatus.pending,
+                  onTap: () => _confirm(
+                    title: 'Cancel Lecture',
+                    message: 'Are you sure you want to cancel this lecture?',
+                    onConfirm: () {
+                      debugPrint('Cancel lecture API call');
+                    },
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildActions(LectureStatus status) {
-    switch (widget.mode) {
-      /// 🔹 CURRENT CLASS
-      case LectureCardMode.current:
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _ActionButton(
-                  label: "Upload\nPhoto",
-                  enabled:
-                      status == LectureStatus.inProgress &&
-                      !_attendanceSubmitted,
-                  onTap: _takePhoto,
-                ),
-                _ActionButton(
-                  label: "Report\nMass Bunk",
-                  enabled:
-                      status == LectureStatus.inProgress &&
-                      !_attendanceSubmitted,
-                  onTap: () {
-                    _confirm(
-                      title: 'Report Mass Bunk',
-                      message: 'Are you sure you want to report mass bunk?',
-                      onConfirm: () {
-                        setState(() {
-                          _attendanceSubmitted = true;
-                        });
-                        print('Report Mass Bunk API call');
-                      },
-                    );
-                  },
-                ),
-                _ActionButton(
-                  label: "Mark\nAll Present",
-                  enabled:
-                      status == LectureStatus.inProgress &&
-                      !_attendanceSubmitted,
-                  onTap: () {
-                    _confirm(
-                      title: 'Mark All Present',
-                      message:
-                          'Are you sure you want to mark all students present?',
-                      onConfirm: () {
-                        setState(() {
-                          _attendanceSubmitted = true;
-                        });
-                        print('Mark All Present API call');
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            /// 🔹 SUBMIT BUTTON
-            if (_photos.isNotEmpty && !_attendanceSubmitted)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: ElevatedButton(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () async {
-                          setState(() {
-                            _isSubmitting = true;
-                          });
-
-                          // 🔹 Simulate API call delay
-                          await Future.delayed(const Duration(seconds: 2));
-
-                          print('Submitting attendance');
-                          print({
-                            'courseCode': schedule.courseCode,
-                            'section': schedule.section,
-                            'photoCount': _photos.length,
-                          });
-
-                          setState(() {
-                            _isSubmitting = false;
-                            _attendanceSubmitted = true;
-                          });
-                        },
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Submit Attendance'),
-                ),
-              ),
-          ],
-        );
-
-      /// 🔹 ALL / UPCOMING
-      case LectureCardMode.all:
-      case LectureCardMode.upcoming:
-        return Align(
-          alignment: Alignment.center,
-          child: _ActionButton(
-            label: "Cancel Lecture",
-            isDanger: true,
-            enabled: status == LectureStatus.pending,
-            onTap: () {
-              _confirm(
-                title: 'Cancel Lecture',
-                message: 'Are you sure you want to cancel this lecture?',
-                onConfirm: () {
-                  print('Cancel Lecture API call');
-                },
-              );
-            },
-          ),
-        );
-    }
-  }
 }
 
-/// 🔹 Status text
+/// 🔹 STATUS TEXT
 class _StatusText extends StatelessWidget {
   final LectureStatus status;
 
@@ -310,18 +306,18 @@ class _StatusText extends StatelessWidget {
       LectureStatus.completed: 'Completed',
     }[status]!;
 
-    final color = status == LectureStatus.inProgress
-        ? Colors.green
-        : Colors.black;
-
     return Text(
       text,
-      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: status == LectureStatus.inProgress ? Colors.green : Colors.black,
+      ),
     );
   }
 }
 
-/// 🔹 Info item
+/// 🔹 INFO ITEM
 class _InfoItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -340,7 +336,7 @@ class _InfoItem extends StatelessWidget {
   }
 }
 
-/// 🔹 Action button
+/// 🔹 ACTION BUTTON
 class _ActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -359,7 +355,9 @@ class _ActionButton extends StatelessWidget {
     return TextButton(
       onPressed: enabled ? onTap : null,
       style: TextButton.styleFrom(
-        foregroundColor: enabled ? Colors.black : Colors.grey,
+        foregroundColor: enabled
+            ? (isDanger ? Colors.red : Colors.black)
+            : Colors.grey,
       ),
       child: Text(
         label,

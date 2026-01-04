@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
+import 'package:ams_try2/features/dashboard/providers/attendance_files_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
 
 class TProfilePage extends ConsumerWidget {
   static Route<void> route() => SlidePageRoute(
@@ -15,17 +18,11 @@ class TProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider.select((s) => s.auth?.user));
+    final filesAsync = ref.watch(attendanceFilesProvider);
 
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
-    // 🔹 Dummy excel list (later comes from API)
-    final excelFiles = [
-      'CSE2101 - 19 Dec.xlsx',
-      'CSE2102 - 20 Dec.xlsx',
-      'CSE2103 - 21 Dec.xlsx',
-    ];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -45,7 +42,7 @@ class TProfilePage extends ConsumerWidget {
         children: [
           const SizedBox(height: 8),
 
-          /// 🔽 VIEW ATTENDANCE DROPDOWN
+          /// 🔽 VIEW ATTENDANCE
           Container(
             color: Colors.white,
             child: ExpansionTile(
@@ -58,15 +55,50 @@ class TProfilePage extends ConsumerWidget {
                 'Download attendance sheets',
                 style: TextStyle(fontSize: 13),
               ),
-              children: excelFiles.map((file) {
-                return ListTile(
-                  leading: const Icon(Icons.file_present, color: Colors.green),
-                  title: Text(file),
-                  onTap: () {
-                    print('Clicked file: $file');
+              children: [
+                filesAsync.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (e, _) => Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Failed to load attendance files',
+                      style: TextStyle(color: Colors.red.shade400),
+                    ),
+                  ),
+                  data: (List<File> files) {
+                    if (files.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          'No attendance files available',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: files.map((file) {
+                        final name = file.path.split('/').last;
+
+                        return ListTile(
+                          leading: const Icon(
+                            Icons.file_present,
+                            color: Colors.green,
+                          ),
+                          title: Text(name),
+                          trailing: const Icon(Icons.download),
+                          onTap: () {
+                            OpenFilex.open(file.path);
+                          },
+                        );
+                      }).toList(),
+                    );
                   },
-                );
-              }).toList(),
+                ),
+              ],
             ),
           ),
 
@@ -76,7 +108,9 @@ class TProfilePage extends ConsumerWidget {
             title: 'Report a Complaint',
             subtitle: 'Raise an issue or concern',
             onTap: () {
-              print('Report Complaint');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Feature coming soon')),
+              );
             },
           ),
 
@@ -94,11 +128,12 @@ class TProfilePage extends ConsumerWidget {
             ),
           ),
 
+          /// 🔹 LOGOUT
           _ProfileTile(
             icon: Icons.logout,
+            iconColor: Colors.red,
             title: 'Logout',
             subtitle: 'Sign out from this account',
-            iconColor: Colors.red,
             onTap: () async {
               await ref.read(authNotifierProvider.notifier).logout();
               Navigator.pushAndRemoveUntil(

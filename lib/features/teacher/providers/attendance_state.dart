@@ -1,13 +1,23 @@
 class AttendanceState {
-  final bool submitted;
   final List<String> photoPaths;
+  final bool submitting;
+  final bool submitted;
 
-  const AttendanceState({this.submitted = false, this.photoPaths = const []});
+  const AttendanceState({
+    this.photoPaths = const [],
+    this.submitting = false,
+    this.submitted = false,
+  });
 
-  AttendanceState copyWith({bool? submitted, List<String>? photoPaths}) {
+  AttendanceState copyWith({
+    List<String>? photoPaths,
+    bool? submitting,
+    bool? submitted,
+  }) {
     return AttendanceState(
-      submitted: submitted ?? this.submitted,
       photoPaths: photoPaths ?? this.photoPaths,
+      submitting: submitting ?? this.submitting,
+      submitted: submitted ?? this.submitted,
     );
   }
 }

@@ -8,46 +8,43 @@ class AuthModel extends Auth {
     required AuthStatus status,
   }) : super(accessToken: accessToken, user: user, status: status);
 
-  /// Convert backend JSON → AuthModel
   factory AuthModel.fromJson(Map<String, dynamic> json) {
-    // Token field (support common alternatives)
-    final token =
-        (json['token'] ?? json['access_token'] ?? json['jwt'])?.toString() ??
-        '';
+    final token = json['token']?.toString() ?? '';
 
-    // Role may be inside "user" or top-level
-    final role = (json['role'] ?? json['user']?['role'] ?? 'student')
-        .toString();
+    final userJson = json['user'] as Map<String, dynamic>;
 
-    // Build UserModel (use nested json if available)
-    final userJson =
-        (json['user'] as Map<String, dynamic>?) ??
-        {
-          'id': json['user_id'],
-          'email': json['email'],
-          'name': json['name'],
-          'role': role,
-        };
+    // 🔹 Pick profile block dynamically
+    Map<String, dynamic>? profileJson;
 
-    final userModel = UserModel.fromJson(userJson);
+    for (final entry in json.entries) {
+      if (entry.value is Map<String, dynamic> &&
+          entry.key != 'user' &&
+          entry.key != 'token') {
+        profileJson = entry.value as Map<String, dynamic>;
+        break;
+      }
+    }
+    if (json.containsKey('teacher')) {
+      profileJson = json['teacher'];
+    } else if (json.containsKey('student')) {
+      profileJson = json['student'];
+    }
 
-    // Map backend status string → enum
-    final statusStr = (json['status'] ?? '').toString().toLowerCase();
-    final status = statusStr == 'approved' || statusStr == 'active'
-        ? AuthStatus.active
-        : statusStr == 'pending'
-        ? AuthStatus.pendingVerification
-        : statusStr == 'suspended'
-        ? AuthStatus.suspended
-        : AuthStatus.unknown;
+    // 2️⃣ FALLBACK: read from user itself (cache case) ✅
+    profileJson ??= userJson;
 
-    return AuthModel(accessToken: token, user: userModel, status: status);
+    final userModel = UserModel.fromJson(userJson, profileJson: profileJson);
+
+    return AuthModel(
+      accessToken: token,
+      user: userModel,
+      status: AuthStatus.active,
+    );
   }
 
-  /// Convert back to JSON for secure storage
   Map<String, dynamic> toJson() => {
     'token': accessToken,
-    'status': status.toString(),
+    'status': status.name,
     'user': (user as UserModel).toJson(),
   };
 }
