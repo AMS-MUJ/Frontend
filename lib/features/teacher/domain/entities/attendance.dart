@@ -1,27 +1,15 @@
+import 'attendance_row.dart';
+
 class Attendance {
   final String lectureId;
+  final String message;
   final String fileName;
-  final String subject;
-  final String date;
-  final List<StudentAttendance> students;
+  final List<AttendanceRow> attendance;
 
   Attendance({
     required this.lectureId,
+    required this.message,
     required this.fileName,
-    required this.subject,
-    required this.date,
-    required this.students,
-  });
-}
-
-class StudentAttendance {
-  final String rollNo;
-  final String name;
-  final bool present;
-
-  StudentAttendance({
-    required this.rollNo,
-    required this.name,
-    required this.present,
+    required this.attendance,
   });
 }

@@ -7,10 +7,10 @@ Future<File> generateAttendanceExcel(Attendance attendance) async {
   final excel = Excel.createExcel();
   final sheet = excel['Attendance'];
 
-  sheet.appendRow(['Roll No', 'Name', 'Status']);
+  sheet.appendRow(['Registration No', 'Status']);
 
-  for (final s in attendance.students) {
-    sheet.appendRow([s.rollNo, s.name, s.present ? 'Present' : 'Absent']);
+  for (final row in attendance.attendance) {
+    sheet.appendRow([row.regNo, row.status]);
   }
 
   final dir = await getApplicationDocumentsDirectory();

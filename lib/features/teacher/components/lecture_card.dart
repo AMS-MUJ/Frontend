@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:ams_try2/core/utils/excel_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -21,13 +22,14 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   final ImagePicker _picker = ImagePicker();
   static const int _maxPhotos = 6;
 
+  /// 🔹 LOCAL PHOTO STATE (only change)
+  final List<String> _photoPaths = [];
+
   Schedule get schedule => widget.schedule;
 
-  AttendanceNotifier get notifier =>
-      ref.read(attendanceProvider(schedule.lectureId).notifier);
+  AttendanceNotifier get notifier => ref.read(attendanceProvider.notifier);
 
-  AttendanceState get attendance =>
-      ref.watch(attendanceProvider(schedule.lectureId));
+  AttendanceState get attendance => ref.watch(attendanceProvider);
 
   /// 📸 Capture photo
   Future<void> _takePhoto() async {
@@ -36,12 +38,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    if (attendance.submitted) {
-      _snack('Attendance already submitted');
-      return;
-    }
-
-    if (attendance.photoPaths.length >= _maxPhotos) {
+    if (_photoPaths.length >= _maxPhotos) {
       _snack('Maximum $_maxPhotos photos allowed');
       return;
     }
@@ -53,7 +50,35 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
     if (image == null) return;
 
-    notifier.addPhoto(image.path);
+    setState(() {
+      _photoPaths.add(image.path);
+    });
+  }
+
+  /// ✅ Submit attendance
+  Future<void> _submitAttendance() async {
+    if (schedule.lectureId.isEmpty) {
+      _snack('Invalid lecture ID');
+      return;
+    }
+
+    await notifier.submitAttendance(schedule.lectureId, _photoPaths);
+
+    final state = ref.read(attendanceProvider);
+
+    if (state.error != null) {
+      _snack(state.error!);
+      return;
+    }
+
+    final attendance = state.attendance;
+    if (attendance == null) {
+      _snack('Attendance submission failed');
+      return;
+    }
+
+    await generateAttendanceExcel(attendance);
+    _snack('Attendance Excel generated successfully');
   }
 
   /// ✅ Confirmation dialog
@@ -88,15 +113,10 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   }
 
   @override
-  void dispose() {
-    notifier.clear(); // 🧹 prevent stale state
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final status = schedule.lectureStatus;
-    final canAct = status == LectureStatus.inProgress && !attendance.submitted;
+    final canAct = status == LectureStatus.inProgress;
+    final loading = attendance.loading;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -148,11 +168,11 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
             const SizedBox(height: 14),
 
-            /// 🔹 PHOTO PREVIEW + DELETE
+            /// 🔹 PHOTO PREVIEW
             if (widget.mode == LectureCardMode.current &&
-                attendance.photoPaths.isNotEmpty) ...[
+                _photoPaths.isNotEmpty) ...[
               Text(
-                'Photos (${attendance.photoPaths.length}/$_maxPhotos)',
+                'Photos (${_photoPaths.length}/$_maxPhotos)',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
@@ -160,13 +180,13 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                 height: 80,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: attendance.photoPaths.length,
+                  itemCount: _photoPaths.length,
                   itemBuilder: (_, i) => Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Stack(
                       children: [
                         Image.file(
-                          File(attendance.photoPaths[i]),
+                          File(_photoPaths[i]),
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
@@ -175,7 +195,11 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                           top: 0,
                           right: 0,
                           child: GestureDetector(
-                            onTap: () => notifier.removePhoto(i),
+                            onTap: () {
+                              setState(() {
+                                _photoPaths.removeAt(i);
+                              });
+                            },
                             child: const CircleAvatar(
                               radius: 10,
                               backgroundColor: Colors.black54,
@@ -204,8 +228,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                     children: [
                       _ActionButton(
                         label: 'Upload\nPhoto',
-                        enabled:
-                            canAct && attendance.photoPaths.length < _maxPhotos,
+                        enabled: canAct && _photoPaths.length < _maxPhotos,
                         onTap: _takePhoto,
                       ),
                       _ActionButton(
@@ -214,7 +237,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                         onTap: () => _confirm(
                           title: 'Report Mass Bunk',
                           message: 'Are you sure you want to report mass bunk?',
-                          onConfirm: notifier.submit,
+                          onConfirm: _submitAttendance,
                         ),
                       ),
                       _ActionButton(
@@ -223,26 +246,26 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                         onTap: () => _confirm(
                           title: 'Mark All Present',
                           message: 'Are you sure you want to mark all present?',
-                          onConfirm: notifier.submit,
+                          onConfirm: _submitAttendance,
                         ),
                       ),
                     ],
                   ),
 
                   /// 🔹 SUBMIT
-                  if (attendance.photoPaths.isNotEmpty && !attendance.submitted)
+                  if (_photoPaths.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: ElevatedButton(
-                        onPressed: attendance.submitting
+                        onPressed: loading
                             ? null
                             : () => _confirm(
                                 title: 'Submit Attendance',
                                 message:
                                     'Once submitted, attendance cannot be changed.',
-                                onConfirm: notifier.submit,
+                                onConfirm: _submitAttendance,
                               ),
-                        child: attendance.submitting
+                        child: loading
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -251,18 +274,6 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                                 ),
                               )
                             : const Text('Submit Attendance'),
-                      ),
-                    ),
-
-                  if (attendance.submitted)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 10),
-                      child: Text(
-                        'Attendance Submitted',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.w600,
-                        ),
                       ),
                     ),
                 ],

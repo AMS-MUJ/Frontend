@@ -1,26 +1,43 @@
+import 'dart:convert';
 import 'package:http/http.dart' as http;
-
 import '../models/attendance_model.dart';
 
-class AttendanceRemoteDataSource {
+abstract class AttendanceRemoteDataSource {
+  Future<AttendanceModel> markAttendance(
+    String lectureId,
+    List<String> imagePaths,
+  );
+}
+
+class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   final http.Client client;
   final String baseUrl;
 
-  AttendanceRemoteDataSource(this.client, this.baseUrl);
+  AttendanceRemoteDataSourceImpl(this.client, this.baseUrl);
 
-  Future<AttendanceModel> uploadAttendance({required String lectureId}) async {
-    // ⏳ MOCK RESPONSE (API not ready)
-    await Future.delayed(const Duration(seconds: 2));
+  @override
+  Future<AttendanceModel> markAttendance(
+    String lectureId,
+    List<String> imagePaths,
+  ) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/attendance/mark-face/$lectureId'),
+    );
+    print('🟡 POST $request');
+    print('🟡 photos count: ${imagePaths.length}');
 
-    return AttendanceModel.fromJson({
-      "lectureId": lectureId,
-      "fileName": "Daa_02_Jan.xlsx",
-      "subject": "Cryptography",
-      "date": "2026-01-01",
-      "students": [
-        {"rollNo": "CSE01", "name": "Aman", "present": true},
-        {"rollNo": "CSE02", "name": "Riya", "present": false},
-      ],
-    });
+    for (final path in imagePaths) {
+      request.files.add(await http.MultipartFile.fromPath('images', path));
+    }
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      return AttendanceModel.fromJson(jsonDecode(body));
+    } else {
+      throw Exception('Attendance submission failed');
+    }
   }
 }

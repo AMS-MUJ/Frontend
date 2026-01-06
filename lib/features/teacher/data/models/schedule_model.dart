@@ -27,12 +27,12 @@ class ScheduleModel {
 
   factory ScheduleModel.fromJson(Map<String, dynamic> json) {
     return ScheduleModel(
-      lectureId: json['lectureId'] as String,
-      subject: json['subject'] as String,
-      courseCode: json['courseCode'] as String,
-      section: json['section_name'] as String,
-      time: json['time'] as String,
-      room: json['room'] as String,
+      lectureId: json['Section_id'] ?? '',
+      subject: json['subject'] ?? '',
+      courseCode: json['courseCode'] ?? '',
+      section: json['section_name'] ?? '',
+      time: json['time'] ?? '',
+      room: json['room'] ?? '',
       totalStudents: json['totalStudents'] as int,
 
       // 🔐 attendance lock (safe defaults)
