@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:ams_try2/core/config/app_config.dart';
 import 'package:ams_try2/core/network/api_routes.dart';
-import 'package:ams_try2/features/auth/data/models/user_model.dart';
 import 'package:http/http.dart' as http;
 import '../models/auth_model.dart';
 

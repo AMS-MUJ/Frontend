@@ -2,16 +2,17 @@ import 'dart:io';
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
-import 'package:ams_try2/features/dashboard/providers/attendance_files_provider.dart';
+import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 
 class TProfilePage extends ConsumerWidget {
-  static Route<void> route() => SlidePageRoute(
-    child: const TProfilePage(),
-    direction: AxisDirection.left,
-  );
+  static Route<void> route() =>
+      SlidePageRoute(
+        child: const TProfilePage(),
+        direction: AxisDirection.left,
+      );
 
   const TProfilePage({super.key});
 
@@ -56,18 +57,76 @@ class TProfilePage extends ConsumerWidget {
                 style: TextStyle(fontSize: 13),
               ),
               children: [
+
+                /// 🧹 CLEAR ALL BUTTON
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.delete_forever, color: Colors.red),
+                      label: const Text(
+                        'Clear All',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) =>
+                              AlertDialog(
+                                title: const Text('Clear Attendance Files'),
+                                content: const Text(
+                                  'This will permanently delete all attendance Excel files. Continue?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                    ),
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                        );
+
+                        if (ok == true) {
+                          await AttendanceFileUtils.clearAll(ref);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('All attendance files deleted'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
+
+                /// 📂 FILE LIST
                 filesAsync.when(
-                  loading: () => const Padding(
+                  loading: () =>
+                  const Padding(
                     padding: EdgeInsets.all(16),
                     child: CircularProgressIndicator(),
                   ),
-                  error: (e, _) => Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Failed to load attendance files',
-                      style: TextStyle(color: Colors.red.shade400),
-                    ),
-                  ),
+                  error: (e, _) =>
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'Failed to load attendance files',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
                   data: (List<File> files) {
                     if (files.isEmpty) {
                       return const Padding(
@@ -81,7 +140,9 @@ class TProfilePage extends ConsumerWidget {
 
                     return Column(
                       children: files.map((file) {
-                        final name = file.path.split('/').last;
+                        final name = file.path
+                            .split('/')
+                            .last;
 
                         return ListTile(
                           leading: const Icon(
@@ -121,7 +182,7 @@ class TProfilePage extends ConsumerWidget {
             child: Text(
               'ACCOUNT',
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: Colors.grey,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -139,7 +200,7 @@ class TProfilePage extends ConsumerWidget {
               Navigator.pushAndRemoveUntil(
                 context,
                 LoginPage.route(),
-                (_) => false,
+                    (_) => false,
               );
             },
           ),
