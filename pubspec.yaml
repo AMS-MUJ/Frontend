@@ -17,8 +17,10 @@ dependencies:
   flutter_dotenv:
   image_picker: ^1.0.7
   path_provider: ^2.1.2
-  excel: ^2.1.0
   open_filex: ^4.4.0
+  pdf: ^3.10.6
+  printing: ^5.11.0
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

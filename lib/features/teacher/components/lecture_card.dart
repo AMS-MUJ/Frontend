@@ -1,9 +1,12 @@
 import 'dart:io';
-import 'package:ams_try2/core/utils/excel_helper.dart';
+
+import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../presentation/providers/attendance_pdf_helper.dart';
+import '../../../core/utils/attendance_submission_store.dart';
 import '../domain/entities/schedule.dart';
 import '../presentation/lecture_card_mode.dart';
 import '../presentation/providers/attendance_provider.dart';
@@ -22,8 +25,12 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   final ImagePicker _picker = ImagePicker();
   static const int _maxPhotos = 6;
 
-  /// 🔹 LOCAL PHOTO STATE (only change)
+  /// 📸 Local photos (not persisted)
   final List<String> _photoPaths = [];
+
+  /// ✅ Persistent submit state
+  bool _submitted = false;
+  bool _checkingSubmission = true;
 
   Schedule get schedule => widget.schedule;
 
@@ -31,10 +38,34 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
   AttendanceState get attendance => ref.watch(attendanceProvider);
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSubmissionStatus();
+  }
+
+  Future<void> _loadSubmissionStatus() async {
+    final submitted = await AttendanceSubmissionStore.isSubmitted(
+      widget.schedule.lectureId,
+    );
+
+    if (mounted) {
+      setState(() {
+        _submitted = submitted;
+        _checkingSubmission = false;
+      });
+    }
+  }
+
   /// 📸 Capture photo
   Future<void> _takePhoto() async {
     if (schedule.lectureStatus != LectureStatus.inProgress) {
       _snack('Lecture is not in progress');
+      return;
+    }
+
+    if (_submitted) {
+      _snack('Attendance already submitted');
       return;
     }
 
@@ -55,7 +86,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     });
   }
 
-  /// ✅ Submit attendance
+  /// ✅ Submit attendance (NO preview here)
   Future<void> _submitAttendance() async {
     if (schedule.lectureId.isEmpty) {
       _snack('Invalid lecture ID');
@@ -71,14 +102,25 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    final attendance = state.attendance;
-    if (attendance == null) {
+    final attendanceData = state.attendance;
+    if (attendanceData == null) {
       _snack('Attendance submission failed');
       return;
     }
 
-    await generateAttendanceExcel(attendance);
-    _snack('Attendance Excel generated successfully');
+    final pdfFile = await generateAttendancePdf(attendanceData);
+
+    print('✅ PDF generated at: ${pdfFile.path}');
+    print('✅ PDF exists: ${await pdfFile.exists()}');
+
+    /// 💾 Persist submission state
+    await AttendanceSubmissionStore.markSubmitted(schedule.lectureId);
+    ref.invalidate(attendanceFilesProvider);
+    setState(() {
+      _submitted = true;
+    });
+
+    _snack('Attendance submitted');
   }
 
   /// ✅ Confirmation dialog
@@ -114,8 +156,15 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingSubmission) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final status = schedule.lectureStatus;
-    final canAct = status == LectureStatus.inProgress;
+    final canAct = status == LectureStatus.inProgress && !_submitted;
     final loading = attendance.loading;
 
     return Card(
@@ -252,12 +301,12 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                     ],
                   ),
 
-                  /// 🔹 SUBMIT
+                  /// 🔹 SUBMIT BUTTON
                   if (_photoPaths.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: ElevatedButton(
-                        onPressed: loading
+                        onPressed: loading || _submitted
                             ? null
                             : () => _confirm(
                                 title: 'Submit Attendance',
@@ -276,6 +325,18 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                             : const Text('Submit Attendance'),
                       ),
                     ),
+
+                  if (_submitted)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Attendance Submitted',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                 ],
               ),
 
@@ -290,9 +351,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                   onTap: () => _confirm(
                     title: 'Cancel Lecture',
                     message: 'Are you sure you want to cancel this lecture?',
-                    onConfirm: () {
-                      debugPrint('Cancel lecture API call');
-                    },
+                    onConfirm: () {},
                   ),
                 ),
               ),

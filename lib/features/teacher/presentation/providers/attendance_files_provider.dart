@@ -9,7 +9,7 @@ final attendanceFilesProvider = FutureProvider<List<File>>((ref) async {
   return dir
       .listSync()
       .whereType<File>()
-      .where((f) => f.path.endsWith('.xlsx'))
+      .where((f) => f.path.endsWith('.pdf'))
       .toList();
 });
 

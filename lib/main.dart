@@ -17,8 +17,8 @@ import 'features/auth/presentation/providers/auth_provider.dart';
 import 'core/storage/secure_storage.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
   try {
+    WidgetsFlutterBinding.ensureInitialized();
     await dotenv.load(fileName: '.env');
   } catch (e) {
     print(

@@ -2,17 +2,16 @@ import 'dart:io';
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
+import 'package:ams_try2/features/common/pdf_preview_page.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_filex/open_filex.dart';
 
 class TProfilePage extends ConsumerWidget {
-  static Route<void> route() =>
-      SlidePageRoute(
-        child: const TProfilePage(),
-        direction: AxisDirection.left,
-      );
+  static Route<void> route() => SlidePageRoute(
+    child: const TProfilePage(),
+    direction: AxisDirection.left,
+  );
 
   const TProfilePage({super.key});
 
@@ -43,7 +42,7 @@ class TProfilePage extends ConsumerWidget {
         children: [
           const SizedBox(height: 8),
 
-          /// 🔽 VIEW ATTENDANCE
+          /// 🔽 VIEW ATTENDANCE (PDFs)
           Container(
             color: Colors.white,
             child: ExpansionTile(
@@ -53,12 +52,11 @@ class TProfilePage extends ConsumerWidget {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
               ),
               subtitle: const Text(
-                'Download attendance sheets',
+                'Preview attendance sheets',
                 style: TextStyle(fontSize: 13),
               ),
               children: [
-
-                /// 🧹 CLEAR ALL BUTTON
+                /// 🧹 CLEAR ALL PDFs
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -75,35 +73,32 @@ class TProfilePage extends ConsumerWidget {
                       onPressed: () async {
                         final ok = await showDialog<bool>(
                           context: context,
-                          builder: (_) =>
-                              AlertDialog(
-                                title: const Text('Clear Attendance Files'),
-                                content: const Text(
-                                  'This will permanently delete all attendance Excel files. Continue?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                    ),
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
+                          builder: (_) => AlertDialog(
+                            title: const Text('Clear Attendance PDFs'),
+                            content: const Text(
+                              'This will permanently delete all attendance PDF files. Continue?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
                               ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
                         );
 
                         if (ok == true) {
                           await AttendanceFileUtils.clearAll(ref);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('All attendance files deleted'),
+                              content: Text('All attendance PDFs deleted'),
                             ),
                           );
                         }
@@ -112,27 +107,25 @@ class TProfilePage extends ConsumerWidget {
                   ),
                 ),
 
-                /// 📂 FILE LIST
+                /// 📂 PDF FILE LIST
                 filesAsync.when(
-                  loading: () =>
-                  const Padding(
+                  loading: () => const Padding(
                     padding: EdgeInsets.all(16),
                     child: CircularProgressIndicator(),
                   ),
-                  error: (e, _) =>
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'Failed to load attendance files',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
+                  error: (e, _) => Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Failed to load attendance files',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
                   data: (List<File> files) {
                     if (files.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.all(16),
                         child: Text(
-                          'No attendance files available',
+                          'No attendance PDFs available',
                           style: TextStyle(color: Colors.grey),
                         ),
                       );
@@ -140,19 +133,23 @@ class TProfilePage extends ConsumerWidget {
 
                     return Column(
                       children: files.map((file) {
-                        final name = file.path
-                            .split('/')
-                            .last;
+                        final name = file.path.split('/').last;
 
                         return ListTile(
                           leading: const Icon(
-                            Icons.file_present,
-                            color: Colors.green,
+                            Icons.picture_as_pdf,
+                            color: Colors.red,
                           ),
                           title: Text(name),
-                          trailing: const Icon(Icons.download),
+                          subtitle: const Text('Tap to preview'),
+                          trailing: const Icon(Icons.visibility),
                           onTap: () {
-                            OpenFilex.open(file.path);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PdfPreviewPage(file: file),
+                              ),
+                            );
                           },
                         );
                       }).toList(),
@@ -200,7 +197,7 @@ class TProfilePage extends ConsumerWidget {
               Navigator.pushAndRemoveUntil(
                 context,
                 LoginPage.route(),
-                    (_) => false,
+                (_) => false,
               );
             },
           ),
