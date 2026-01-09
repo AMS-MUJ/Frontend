@@ -9,7 +9,7 @@ class AppConfig {
     return url;
   }
 
-  static String get mock_api_Url {
+  static String get mockApiUrl {
     final url = dotenv.env['MOCK_API_URL'];
     if (url == null || url.isEmpty) {
       throw Exception('MOCK_API_URL not set in .env');

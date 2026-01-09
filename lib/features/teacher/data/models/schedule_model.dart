@@ -27,7 +27,7 @@ class ScheduleModel {
 
   factory ScheduleModel.fromJson(Map<String, dynamic> json) {
     return ScheduleModel(
-      lectureId: json['Section_id'] ?? '',
+      lectureId: json['lecture_id'] ?? '',
       subject: json['subject'] ?? '',
       courseCode: json['courseCode'] ?? '',
       section: json['section_name'] ?? '',

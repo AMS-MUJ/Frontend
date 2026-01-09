@@ -10,13 +10,15 @@ class AttendanceModel extends Attendance {
   });
 
   factory AttendanceModel.fromJson(Map<String, dynamic> json) {
+    final rawAttendance = json['attendance'];
+
     return AttendanceModel(
-      lectureId: json['lectureId'] ?? '',
-      message: json['message'] ?? '',
-      fileName: json['fileName'] ?? '',
-      attendance: (json['attendance'] as List)
-          .map((e) => AttendanceRow.fromJson(e))
-          .toList(),
+      lectureId: json['lectureId']?.toString() ?? '',
+      message: json['message']?.toString() ?? '',
+      fileName: json['fileName']?.toString() ?? '',
+      attendance: rawAttendance is List
+          ? rawAttendance.map((e) => AttendanceRow.fromJson(e)).toList()
+          : [],
     );
   }
 }

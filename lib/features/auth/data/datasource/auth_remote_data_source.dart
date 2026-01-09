@@ -57,7 +57,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     // Decode JSON FIRST
     final decodedBody = jsonDecode(response.body) as Map<String, dynamic>;
-    print('TEACHER NAME: ${decodedBody['message']?['teacher']?['name']}');
 
     // Validate success flag
     if (decodedBody['success'] != true) {

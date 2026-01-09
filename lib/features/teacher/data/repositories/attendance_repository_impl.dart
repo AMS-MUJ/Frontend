@@ -1,14 +1,19 @@
-import '../../domain/entities/attendance.dart';
-import '../../domain/repository/attendance_repository.dart';
-import '../datasources/attendance_remote_data_source.dart';
+import 'package:ams_try2/features/teacher/data/datasources/attendance_remote_data_source.dart';
+import 'package:ams_try2/features/teacher/domain/entities/attendance.dart';
+import 'package:ams_try2/features/teacher/domain/repository/attendance_repository.dart';
 
 class AttendanceRepositoryImpl implements AttendanceRepository {
-  final AttendanceRemoteDataSource remoteDataSource;
+  final AttendanceRemoteDataSource remote;
 
-  AttendanceRepositoryImpl(this.remoteDataSource);
+  AttendanceRepositoryImpl(this.remote);
 
   @override
   Future<Attendance> markAttendance(String lectureId, List<String> imagePaths) {
-    return remoteDataSource.markAttendance(lectureId, imagePaths);
+    return remote.markAttendance(lectureId, imagePaths);
+  }
+
+  @override
+  Future<bool> isMarked(String lectureId) {
+    return remote.isMarked(lectureId);
   }
 }

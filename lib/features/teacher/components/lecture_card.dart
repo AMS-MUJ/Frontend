@@ -1,11 +1,10 @@
 import 'dart:io';
-
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
+import 'package:ams_try2/features/teacher/presentation/providers/attendance_pdf_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-
-import '../presentation/providers/attendance_pdf_helper.dart';
+import 'package:ams_try2/features/teacher/domain/entities/attendance.dart';
 import '../../../core/utils/attendance_submission_store.dart';
 import '../domain/entities/schedule.dart';
 import '../presentation/lecture_card_mode.dart';
@@ -34,9 +33,11 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
   Schedule get schedule => widget.schedule;
 
-  AttendanceNotifier get notifier => ref.read(attendanceProvider.notifier);
+  AttendanceNotifier get notifier =>
+      ref.read(attendanceProvider(schedule.lectureId).notifier);
 
-  AttendanceState get attendance => ref.watch(attendanceProvider);
+  AttendanceState get attendance =>
+      ref.watch(attendanceProvider(schedule.lectureId));
 
   @override
   void initState() {
@@ -93,9 +94,9 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    await notifier.submitAttendance(schedule.lectureId, _photoPaths);
+    await notifier.submitAttendance(_photoPaths);
 
-    final state = ref.read(attendanceProvider);
+    final state = ref.read(attendanceProvider(schedule.lectureId));
 
     if (state.error != null) {
       _snack(state.error!);

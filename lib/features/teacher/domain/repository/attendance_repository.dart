@@ -1,5 +1,7 @@
-import '../entities/attendance.dart';
+import 'package:ams_try2/features/teacher/domain/entities/attendance.dart';
 
 abstract class AttendanceRepository {
   Future<Attendance> markAttendance(String lectureId, List<String> imagePaths);
+
+  Future<bool> isMarked(String lectureId);
 }

@@ -1,12 +1,12 @@
 class ApiRoutes {
-  // Auth
   static const String login = '/login';
   static const String logout = '/logout';
 
-  // Teacher
   static const String teacherDashboard = '/dashboard/teacher';
-  static const String UploadPhoto = '/attendance/mark-face/';
 
-  // Student (future)
+  // Attendance
+  static const String markAttendance = '/attendance/mark-face';
+  static const String isMarked = '/attendance/is-marked';
+
   static const String studentDashboard = '/dashboard/student';
 }

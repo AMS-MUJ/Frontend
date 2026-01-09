@@ -1,5 +1,5 @@
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
-import 'package:ams_try2/features/dashboard/TeacherProfilePage.dart';
+import 'package:ams_try2/features/dashboard/teacher_profile_page.dart';
 import 'package:ams_try2/features/teacher/components/lecture_card.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/home_filter.dart';
