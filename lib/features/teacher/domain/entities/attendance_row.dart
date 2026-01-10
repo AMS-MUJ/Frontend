@@ -6,8 +6,8 @@ class AttendanceRow {
 
   factory AttendanceRow.fromJson(Map<String, dynamic> json) {
     return AttendanceRow(
-      regNo: json['regNo'] ?? '',
-      status: json['status'] ?? '',
+      regNo: json['regNo']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
     );
   }
 }
