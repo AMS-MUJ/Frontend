@@ -29,13 +29,16 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
 
   AttendanceNotifier(this.repo, this.lectureId) : super(AttendanceState());
 
-  Future<void> submitAttendance(List<String> photos) async {
-    state = state.copyWith(loading: true, error: null);
-
+  Future<void> submitAttendance(List<String> imagePaths) async {
     try {
-      final result = await repo.markAttendance(lectureId, photos);
+      state = state.copyWith(loading: true, error: null);
 
-      state = state.copyWith(loading: false, attendance: result);
+      final result = await repo.markAttendance(lectureId, imagePaths);
+
+      state = state.copyWith(
+        loading: false,
+        attendance: result, //  KEEP THE DATA
+      );
     } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
     }

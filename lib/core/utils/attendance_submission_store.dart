@@ -12,4 +12,9 @@ class AttendanceSubmissionStore {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_key(lectureId)) ?? false;
   }
+
+  static Future<void> clearForLecture(String lectureId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('attendance_submitted_$lectureId');
+  }
 }

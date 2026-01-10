@@ -4,7 +4,6 @@ import 'package:ams_try2/features/teacher/presentation/providers/attendance_pdf_
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:ams_try2/features/teacher/domain/entities/attendance.dart';
 import '../../../core/utils/attendance_submission_store.dart';
 import '../domain/entities/schedule.dart';
 import '../presentation/lecture_card_mode.dart';
@@ -43,6 +42,18 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   void initState() {
     super.initState();
     _loadSubmissionStatus();
+  }
+
+  Future<void> _devResetAttendance() async {
+    await AttendanceSubmissionStore.clearForLecture(schedule.lectureId);
+    await AttendanceFileUtils.clearAll(ref);
+
+    setState(() {
+      _submitted = false;
+      _photoPaths.clear();
+    });
+
+    _snack('DEV: Attendance reset for testing');
   }
 
   Future<void> _loadSubmissionStatus() async {
@@ -108,11 +119,11 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       _snack('Attendance submission failed');
       return;
     }
+    debugPrint(
+      '🧪 Attendance rows BEFORE PDF: ${attendanceData.attendance.length}',
+    );
 
     final pdfFile = await generateAttendancePdf(attendanceData);
-
-    print('✅ PDF generated at: ${pdfFile.path}');
-    print('✅ PDF exists: ${await pdfFile.exists()}');
 
     /// 💾 Persist submission state
     await AttendanceSubmissionStore.markSubmitted(schedule.lectureId);
@@ -328,14 +339,26 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                     ),
 
                   if (_submitted)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        'Attendance Submitted',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Attendance Submitted',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          //remove when production ready
+                          TextButton(
+                            onPressed: _devResetAttendance,
+                            child: const Text(
+                              'DEV: Reset Attendance',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
