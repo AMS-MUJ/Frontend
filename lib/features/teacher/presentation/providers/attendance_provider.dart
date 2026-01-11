@@ -43,10 +43,6 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       state = state.copyWith(loading: false, error: e.toString());
     }
   }
-
-  Future<bool> checkIsMarked() {
-    return repo.isMarked(lectureId);
-  }
 }
 
 final attendanceProvider =

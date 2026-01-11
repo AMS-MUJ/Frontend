@@ -44,18 +44,6 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     _loadSubmissionStatus();
   }
 
-  Future<void> _devResetAttendance() async {
-    await AttendanceSubmissionStore.clearForLecture(schedule.lectureId);
-    await AttendanceFileUtils.clearAll(ref);
-
-    setState(() {
-      _submitted = false;
-      _photoPaths.clear();
-    });
-
-    _snack('DEV: Attendance reset for testing');
-  }
-
   Future<void> _loadSubmissionStatus() async {
     final submitted = await AttendanceSubmissionStore.isSubmitted(
       widget.schedule.lectureId,
@@ -348,14 +336,6 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                             style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          //remove when production ready
-                          TextButton(
-                            onPressed: _devResetAttendance,
-                            child: const Text(
-                              'DEV: Reset Attendance',
-                              style: TextStyle(color: Colors.red),
                             ),
                           ),
                         ],
