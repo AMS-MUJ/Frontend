@@ -12,8 +12,4 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
     return remote.markAttendance(lectureId, imagePaths);
   }
 
-  @override
-  Future<bool> isMarked(String lectureId) {
-    return remote.isMarked(lectureId);
-  }
 }
