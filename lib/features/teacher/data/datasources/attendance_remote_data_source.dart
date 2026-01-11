@@ -31,26 +31,4 @@ class AttendanceRemoteDataSource {
 
     return AttendanceModel.fromJson(jsonDecode(response.body));
   }
-
-  Future<bool> isMarked(String lectureId) async {
-    final uri = Uri.parse(
-      '${AppConfig.mockApiUrl}${ApiRoutes.isMarked}/$lectureId',
-    );
-
-    final response = await http.get(uri);
-
-    debugPrint('🔵 IS MARKED RESPONSE');
-    debugPrint('🔵 STATUS CODE: ${response.statusCode}');
-    debugPrint('🔵 BODY: ${response.body}');
-
-    if (response.statusCode != 200) {
-      final errorJson = jsonDecode(response.body);
-      throw Exception(
-        errorJson['message'] ?? 'Failed to check attendance status',
-      );
-    }
-
-    final json = jsonDecode(response.body);
-    return json['marked'] == true;
-  }
 }
