@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:ams_try2/core/config/app_config.dart';
 import 'package:ams_try2/core/network/api_routes.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/auth_model.dart';
 
@@ -39,6 +40,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     http.Response response;
     try {
+      debugPrint('🔵 LOGIN API HIT: $uri');
       response = await client.post(
         uri,
         headers: {'Content-Type': 'application/json'},

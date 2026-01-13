@@ -57,35 +57,6 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     }
   }
 
-  /// 📸 Capture photo
-  Future<void> _takePhoto() async {
-    if (schedule.lectureStatus != LectureStatus.inProgress) {
-      _snack('Lecture is not in progress');
-      return;
-    }
-
-    if (_submitted) {
-      _snack('Attendance already submitted');
-      return;
-    }
-
-    if (_photoPaths.length >= _maxPhotos) {
-      _snack('Maximum $_maxPhotos photos allowed');
-      return;
-    }
-
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 70,
-    );
-
-    if (image == null) return;
-
-    setState(() {
-      _photoPaths.add(image.path);
-    });
-  }
-
   /// ✅ Submit attendance (NO preview here)
   Future<void> _submitAttendance() async {
     if (schedule.lectureId.isEmpty) {
@@ -121,6 +92,63 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     });
 
     _snack('Attendance submitted');
+  }
+
+  Future<void> _showImageSourcePicker() async {
+    if (schedule.lectureStatus != LectureStatus.inProgress) {
+      _snack('Lecture is not in progress');
+      return;
+    }
+
+    if (_submitted) {
+      _snack('Attendance already submitted');
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (_photoPaths.length >= _maxPhotos) {
+      _snack('Maximum $_maxPhotos photos allowed');
+      return;
+    }
+
+    final XFile? image = await _picker.pickImage(
+      source: source,
+      imageQuality: 70,
+    );
+
+    if (image == null) return;
+
+    setState(() {
+      _photoPaths.add(image.path);
+    });
   }
 
   /// ✅ Confirmation dialog
@@ -272,16 +300,15 @@ class _LectureCardState extends ConsumerState<LectureCard> {
             if (widget.mode == LectureCardMode.current)
               Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
                     children: [
                       _ActionButton(
-                        label: 'Upload\nPhoto',
+                        label: 'Upload Photo',
                         enabled: canAct && _photoPaths.length < _maxPhotos,
-                        onTap: _takePhoto,
+                        onTap: _showImageSourcePicker,
                       ),
                       _ActionButton(
-                        label: 'Report\nMass Bunk',
+                        label: 'Report Mass Bunk',
                         enabled: canAct,
                         onTap: () => _confirm(
                           title: 'Report Mass Bunk',
@@ -290,7 +317,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                         ),
                       ),
                       _ActionButton(
-                        label: 'Mark\nAll Present',
+                        label: 'Mark All Present',
                         enabled: canAct,
                         onTap: () => _confirm(
                           title: 'Mark All Present',
@@ -435,7 +462,7 @@ class _ActionButton extends StatelessWidget {
       ),
       child: Text(
         label,
-        textAlign: TextAlign.center,
+        textAlign: TextAlign.start,
         style: const TextStyle(fontSize: 18),
       ),
     );

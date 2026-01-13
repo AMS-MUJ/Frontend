@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:ams_try2/core/storage/secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -12,10 +13,14 @@ class AttendanceRemoteDataSource {
     List<String> imagePaths,
   ) async {
     final uri = Uri.parse(
-      '${AppConfig.mockApiUrl}${ApiRoutes.markAttendance}/$lectureId',
+      '${AppConfig.baseUrl}${ApiRoutes.markAttendance}/$lectureId',
     );
 
+    final token = await secureStorage.read(key: 'token');
+
     final request = http.MultipartRequest('POST', uri);
+
+    request.headers['Authorization'] = 'Bearer $token';
 
     for (final path in imagePaths) {
       request.files.add(await http.MultipartFile.fromPath('images', path));
@@ -24,9 +29,11 @@ class AttendanceRemoteDataSource {
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
 
+    debugPrint('🟡 STATUS CODE: ${response.statusCode}');
+    debugPrint('🟡 RAW RESPONSE BODY: ${response.body}');
+
     if (response.statusCode != 200) {
-      final errorJson = jsonDecode(response.body);
-      throw Exception(errorJson['message'] ?? 'Attendance submission failed');
+      throw Exception('Attendance submission failed');
     }
 
     return AttendanceModel.fromJson(jsonDecode(response.body));
