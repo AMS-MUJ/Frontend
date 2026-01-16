@@ -40,7 +40,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     http.Response response;
     try {
-      debugPrint('🔵 LOGIN API HIT: $uri');
       response = await client.post(
         uri,
         headers: {'Content-Type': 'application/json'},

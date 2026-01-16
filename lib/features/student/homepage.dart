@@ -27,3 +27,26 @@ class Shomepage extends ConsumerWidget {
     );
   }
 }
+
+// lib/
+// └── features/
+// └── student/
+// ├── data/
+// │   ├── models/
+// │   │   └── schedule_model.dart
+// │   │
+// │   ├── services/
+// │   │   └── student_api_service.dart
+// │   │
+// │   └── repositories/
+// │       └── student_repository.dart
+// │
+// └── presentation/
+// ├── pages/
+// │   └── student_home_page.dart
+// │
+// ├── providers/
+// │   └── student_home_provider.dart
+// │
+// └── widgets/
+// └── class_card.dart

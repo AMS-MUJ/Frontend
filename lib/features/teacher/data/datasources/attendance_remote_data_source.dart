@@ -29,9 +29,6 @@ class AttendanceRemoteDataSource {
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
 
-    debugPrint('🟡 STATUS CODE: ${response.statusCode}');
-    debugPrint('🟡 RAW RESPONSE BODY: ${response.body}');
-
     if (response.statusCode != 200) {
       throw Exception('Attendance submission failed');
     }
