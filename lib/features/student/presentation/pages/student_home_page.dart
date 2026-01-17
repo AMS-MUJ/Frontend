@@ -25,7 +25,7 @@ class StudentHomePage extends ConsumerWidget {
         ],
       ),
 
-      /// 🔄 PULL TO REFRESH
+      /// PULL TO REFRESH
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(studentHomeProvider);

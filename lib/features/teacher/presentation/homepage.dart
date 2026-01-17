@@ -1,6 +1,7 @@
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/dashboard/teacher_profile_page.dart';
 import 'package:ams_try2/features/teacher/components/lecture_card.dart';
+import 'package:ams_try2/features/teacher/components/lecture_card_shimmer.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/home_filter.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/home_filter_provider.dart';
@@ -87,7 +88,11 @@ class Thomepage extends ConsumerWidget {
           /// 🔹 CONTENT
           Expanded(
             child: homeState.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => ListView.builder(
+                padding: const EdgeInsets.only(top: 8),
+                itemCount: 4,
+                itemBuilder: (_, __) => const LectureCardShimmer(),
+              ),
 
               error: (err, _) => Center(
                 child: Text(
@@ -103,7 +108,6 @@ class Thomepage extends ConsumerWidget {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    // 🔹 Force API refetch
                     ref.invalidate(homeProvider);
                     await Future.delayed(const Duration(milliseconds: 500));
                   },
