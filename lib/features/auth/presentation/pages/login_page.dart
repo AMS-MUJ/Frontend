@@ -1,7 +1,7 @@
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/components/auth_field.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
-import 'package:ams_try2/features/student/homepage.dart';
+import 'package:ams_try2/features/student/presentation/pages/student_home_page.dart';
 import 'package:ams_try2/features/teacher/presentation/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +52,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         } else {
           Navigator.pushReplacement(
             context,
-            SlidePageRoute(child: const Shomepage()),
+            SlidePageRoute(child: const StudentHomePage()),
           );
         }
       }
