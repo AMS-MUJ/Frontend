@@ -1,88 +1,117 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
+  static Route<void> route() {
+    return MaterialPageRoute(builder: (_) => const ForgotPasswordPage());
+  }
+
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final TextEditingController emailController = TextEditingController();
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
+  final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _loading = false;
 
   @override
   void dispose() {
-    emailController.dispose();
+    _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    try {
+      // TODO: call forgot password API
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset link sent to your email')),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Forgot Password",
-          style: TextStyle(fontWeight: FontWeight.w400, fontSize: 28),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Forgot Password')),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               const Text(
-                "Enter your registered college email",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                'Reset your password',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-              // Email field
+              const Text(
+                'Enter your registered email address. '
+                'We’ll send you a link to reset your password.',
+                style: TextStyle(color: Colors.grey),
+              ),
+
+              const SizedBox(height: 24),
+
               TextFormField(
-                controller: emailController,
+                controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  hintText: "Email",
+                  labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Email is required";
+                  if (value == null || value.isEmpty) {
+                    return 'Email is required';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Enter a valid email';
                   }
                   return null;
                 },
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
 
-              // Continue button
               SizedBox(
                 width: double.infinity,
-                height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (!_formKey.currentState!.validate()) return;
-
-                    final email = emailController.text.trim();
-
-                    // 🔹 For now, just print
-                    print("Forgot password requested for: $email");
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Continue pressed (API not wired yet)"),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    "Continue",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  onPressed: _loading ? null : _submit,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Send Reset Link'),
                 ),
               ),
             ],

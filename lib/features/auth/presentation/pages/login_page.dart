@@ -1,5 +1,6 @@
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/components/auth_field.dart';
+import 'package:ams_try2/features/auth/presentation/pages/forgot_password.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
 import 'package:ams_try2/features/student/presentation/pages/student_home_page.dart';
 import 'package:ams_try2/features/teacher/presentation/homepage.dart';
@@ -175,7 +176,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // TODO: Forgot password
+                              Navigator.push(
+                                context,
+                                ForgotPasswordPage.route(),
+                              );
                             },
                             child: Text(
                               "Forgot password?",
