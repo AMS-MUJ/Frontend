@@ -21,10 +21,8 @@ final filteredScheduleProvider = Provider<List<Schedule>>((ref) {
             return now.isAfter(s.startDateTime) && now.isBefore(s.endDateTime);
           }).toList();
 
-        case HomeFilter.upcoming:
-          return schedules.where((s) {
-            return s.startDateTime.isAfter(now);
-          }).toList();
+        case HomeFilter.attendance:
+          return schedules.where((s) => s.attendanceMarked == true).toList();
       }
     },
     orElse: () => [],

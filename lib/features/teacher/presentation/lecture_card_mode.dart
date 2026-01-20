@@ -1,1 +1,1 @@
-enum LectureCardMode { all, current, upcoming }
+enum LectureCardMode { all, current, attendance }

@@ -1,5 +1,6 @@
 import 'package:ams_try2/features/dashboard/student_profile_page.dart';
 import 'package:ams_try2/features/student/widgets/class_card.dart';
+import 'package:ams_try2/features/teacher/components/lecture_card_shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/student_home_provider.dart';
@@ -33,7 +34,11 @@ class StudentHomePage extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: homeAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => ListView.builder(
+              padding: const EdgeInsets.only(top: 8),
+              itemCount: 4,
+              itemBuilder: (_, __) => const LectureCardShimmer(),
+            ),
             error: (e, _) =>
                 Center(child: Text(e.toString().replaceAll('Exception: ', ''))),
             data: (schedule) {

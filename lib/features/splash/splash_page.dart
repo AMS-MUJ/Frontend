@@ -5,7 +5,6 @@ import '../../core/navigation/slide_page_route.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../auth/presentation/pages/login_page.dart';
 import '../teacher/presentation/homepage.dart';
-import '../student/homepage.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});

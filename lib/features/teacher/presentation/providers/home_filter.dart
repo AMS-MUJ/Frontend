@@ -1,1 +1,1 @@
-enum HomeFilter { all, current, upcoming }
+enum HomeFilter { all, current, attendance }
