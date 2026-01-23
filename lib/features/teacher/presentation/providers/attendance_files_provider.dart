@@ -1,33 +1,27 @@
 import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
-final attendanceFilesProvider = FutureProvider<List<File>>((ref) async {
+import '../../../attendance/domain/attendance_record.dart';
+
+final attendanceFilesProvider = FutureProvider<List<AttendanceRecord>>((
+  ref,
+) async {
   final dir = await getApplicationDocumentsDirectory();
 
-  final files = dir
+  final pdfFiles = dir
       .listSync()
       .whereType<File>()
-      .where((f) => f.path.endsWith('.pdf'))
+      .where((file) => file.path.endsWith('.pdf'))
       .toList();
 
-  files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+  pdfFiles.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
 
-  return files;
+  return pdfFiles.map((pdf) {
+    final basePath = pdf.path.replaceAll('.pdf', '');
+    final id = basePath.split('_').last;
+
+    return AttendanceRecord(id: id, basePath: basePath);
+  }).toList();
 });
-
-class AttendanceFileUtils {
-  static Future<void> clearAll(WidgetRef ref) async {
-    final dir = await getApplicationDocumentsDirectory();
-
-    final files = dir.listSync().whereType<File>().where(
-      (f) => f.path.endsWith('.pdf') || f.path.endsWith('.xlsx'),
-    );
-
-    for (final file in files) {
-      await file.delete();
-    }
-
-    ref.invalidate(attendanceFilesProvider);
-  }
-}

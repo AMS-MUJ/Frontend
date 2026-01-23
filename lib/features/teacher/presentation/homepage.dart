@@ -1,6 +1,9 @@
-import 'dart:io';
-
+import 'package:ams_try2/features/attendance/data/attendance_cleanup_service.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
+import 'package:ams_try2/features/attendance/domain/attendance_record.dart';
 import 'package:ams_try2/features/dashboard/teacher_profile_page.dart';
 import 'package:ams_try2/features/teacher/components/lecture_card.dart';
 import 'package:ams_try2/features/teacher/components/lecture_card_shimmer.dart';
@@ -9,9 +12,6 @@ import 'package:ams_try2/features/teacher/presentation/providers/attendance_file
 import 'package:ams_try2/features/teacher/presentation/providers/home_filter.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/home_filter_provider.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/filtered_schedule_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_filex/open_filex.dart';
 
 import '../providers/home_provider.dart';
 
@@ -43,14 +43,13 @@ class Thomepage extends ConsumerWidget {
               Navigator.push(context, TProfilePage.route());
             },
           ),
-          const SizedBox(width: 15),
+          const SizedBox(width: 12),
         ],
       ),
-
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// 🔹 FILTER CHIPS
+          /// FILTER CHIPS
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -78,28 +77,24 @@ class Thomepage extends ConsumerWidget {
             ),
           ),
 
-          /// 🔹 CONTENT
+          /// MAIN CONTENT
           Expanded(
             child: homeState.when(
               loading: () => ListView.builder(
                 itemCount: 4,
                 itemBuilder: (_, __) => const LectureCardShimmer(),
               ),
-
               error: (err, _) => Center(
                 child: Text(
                   err.toString(),
                   style: const TextStyle(color: Colors.red),
                 ),
               ),
-
               data: (_) {
-                /// 🔹 SEE ATTENDANCE MODE
                 if (selectedFilter == HomeFilter.attendance) {
                   return const _AttendanceList();
                 }
 
-                /// 🔹 NORMAL LECTURE LIST
                 if (filteredSchedules.isEmpty) {
                   return const Center(child: Text('No classes available'));
                 }
@@ -130,15 +125,15 @@ class Thomepage extends ConsumerWidget {
     switch (filter) {
       case HomeFilter.current:
         return LectureCardMode.current;
-      case HomeFilter.attendance:
-        return LectureCardMode.attendance;
       case HomeFilter.all:
         return LectureCardMode.all;
+      case HomeFilter.attendance:
+        return LectureCardMode.attendance;
     }
   }
 }
 
-/// 🔹 FILTER CHIP
+/// FILTER CHIP
 class _FilterChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -163,13 +158,13 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-/// 🔹 ATTENDANCE LIST
+/// ATTENDANCE LIST
 class _AttendanceList extends ConsumerWidget {
   const _AttendanceList();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filesAsync = ref.watch(attendanceFilesProvider);
+    final recordsAsync = ref.watch(attendanceFilesProvider);
 
     return Column(
       children: [
@@ -214,7 +209,8 @@ class _AttendanceList extends ConsumerWidget {
                   );
 
                   if (ok == true) {
-                    await AttendanceFileUtils.clearAll(ref);
+                    await AttendanceCleanupService.clearAll();
+                    ref.invalidate(attendanceFilesProvider);
                   }
                 },
               ),
@@ -222,23 +218,35 @@ class _AttendanceList extends ConsumerWidget {
           ),
         ),
 
-        /// FILE LIST
+        /// RECORD LIST
         Expanded(
-          child: filesAsync.when(
+          child: recordsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) =>
                 const Center(child: Text('Failed to load attendance')),
-            data: (files) {
-              if (files.isEmpty) {
+            data: (records) {
+              if (records.isEmpty) {
                 return const Center(child: Text('No attendance records found'));
               }
 
               return ListView.builder(
-                itemCount: files.length,
+                itemCount: records.length,
                 itemBuilder: (_, index) {
-                  final file = files[index];
-                  final name = file.path.split('/').last;
-                  return _AttendanceFileTile(file: file, name: name);
+                  final record = records[index];
+                  final name = record.pdfPath.split('/').last;
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.description_outlined,
+                      color: Colors.blueGrey,
+                    ),
+                    title: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showOpenOptions(context, record),
+                  );
                 },
               );
             },
@@ -249,39 +257,8 @@ class _AttendanceList extends ConsumerWidget {
   }
 }
 
-/// 🔹 FILE TILE
-class _AttendanceFileTile extends StatelessWidget {
-  final File file;
-  final String name;
-
-  const _AttendanceFileTile({required this.file, required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    final isPdf = name.toLowerCase().endsWith('.pdf');
-
-    return ListTile(
-      leading: Icon(
-        isPdf ? Icons.picture_as_pdf : Icons.table_chart,
-        color: isPdf ? Colors.red : Colors.green,
-      ),
-      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: const Icon(Icons.open_in_new),
-      onTap: () => _showOpenOptions(context, file),
-    );
-  }
-}
-
-/// 🔹 OPEN MENU (PDF / EXCEL)
-void _showOpenOptions(BuildContext context, File file) {
-  final basePath = file.path.replaceAll(
-    RegExp(r'\.(pdf|xlsx)$', caseSensitive: false),
-    '',
-  );
-
-  final pdfFile = File('$basePath.pdf');
-  final excelFile = File('$basePath.xlsx');
-
+/// OPEN OPTIONS
+void _showOpenOptions(BuildContext context, AttendanceRecord record) {
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
@@ -299,25 +276,23 @@ void _showOpenOptions(BuildContext context, File file) {
             ),
           ),
 
-          if (pdfFile.existsSync())
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-              title: const Text('Open as PDF'),
-              onTap: () {
-                Navigator.pop(context);
-                OpenFilex.open(pdfFile.path);
-              },
-            ),
+          ListTile(
+            leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+            title: const Text('Open PDF'),
+            onTap: () {
+              Navigator.pop(context);
+              OpenFilex.open(record.pdfPath);
+            },
+          ),
 
-          if (excelFile.existsSync())
-            ListTile(
-              leading: const Icon(Icons.table_chart, color: Colors.green),
-              title: const Text('Open as Excel'),
-              onTap: () {
-                Navigator.pop(context);
-                OpenFilex.open(excelFile.path);
-              },
-            ),
+          ListTile(
+            leading: const Icon(Icons.table_chart, color: Colors.green),
+            title: const Text('Open Excel'),
+            onTap: () {
+              Navigator.pop(context);
+              OpenFilex.open(record.excelPath);
+            },
+          ),
 
           const SizedBox(height: 8),
         ],

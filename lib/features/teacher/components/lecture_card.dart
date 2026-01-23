@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'package:ams_try2/features/teacher/presentation/providers/attendance_excel_helper.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
-import 'package:ams_try2/features/teacher/presentation/providers/attendance_pdf_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -82,9 +80,6 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     debugPrint(
       '🧪 Attendance rows BEFORE PDF: ${attendanceData.attendance.length}',
     );
-
-    final pdfFile = await generateAttendancePdf(attendanceData);
-    final excelFile = await generateAttendanceExcel(attendanceData);
 
     /// 💾 Persist submission state
     await AttendanceSubmissionStore.markSubmitted(schedule.lectureId);

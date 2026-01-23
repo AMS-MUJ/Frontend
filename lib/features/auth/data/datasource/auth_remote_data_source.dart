@@ -37,6 +37,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String password,
   }) async {
     final uri = Uri.parse('${AppConfig.baseUrl}${ApiRoutes.login}');
+    debugPrint('${AppConfig.baseUrl}${ApiRoutes.login}');
 
     http.Response response;
     try {
