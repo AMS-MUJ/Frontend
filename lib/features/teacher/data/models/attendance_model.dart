@@ -1,24 +1,27 @@
 import '../../domain/entities/attendance.dart';
-import '../../domain/entities/attendance_row.dart';
+import 'attendance_student_model.dart';
 
-class AttendanceModel extends Attendance {
+class AttendanceModel {
+  final String lectureId;
+  final String fileName;
+  final String message;
+  final List<AttendanceStudentModel> attendance;
+
   AttendanceModel({
-    required super.lectureId,
-    required super.message,
-    required super.fileName,
-    required super.attendance,
+    required this.lectureId,
+    required this.fileName,
+    required this.message,
+    required this.attendance,
   });
 
   factory AttendanceModel.fromJson(Map<String, dynamic> json) {
-    final rawAttendance = json['attendance'];
-
     return AttendanceModel(
-      lectureId: json['lectureId']?.toString() ?? '',
-      message: json['message']?.toString() ?? '',
-      fileName: json['fileName']?.toString() ?? '',
-      attendance: rawAttendance is List
-          ? rawAttendance.map((e) => AttendanceRow.fromJson(e)).toList()
-          : [],
+      lectureId: json['lectureId'],
+      fileName: json['fileName'] ?? '',
+      message: json['message'] ?? '',
+      attendance: (json['attendance'] as List)
+          .map((e) => AttendanceStudentModel.fromJson(e))
+          .toList(),
     );
   }
 }

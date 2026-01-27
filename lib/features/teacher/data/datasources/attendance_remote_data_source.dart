@@ -1,10 +1,8 @@
 import 'dart:convert';
-import 'package:ams_try2/core/storage/secure_storage.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import '../../../../core/config/app_config.dart';
 import '../../../../core/network/api_routes.dart';
+import '../../../../core/storage/secure_storage.dart';
 import '../models/attendance_model.dart';
 
 class AttendanceRemoteDataSource {
@@ -19,7 +17,6 @@ class AttendanceRemoteDataSource {
     final token = await secureStorage.read(key: 'token');
 
     final request = http.MultipartRequest('POST', uri);
-
     request.headers['Authorization'] = 'Bearer $token';
 
     for (final path in imagePaths) {

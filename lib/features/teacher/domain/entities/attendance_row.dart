@@ -1,13 +1,11 @@
 class AttendanceRow {
   final String regNo;
+  final String name;
   final String status;
 
-  AttendanceRow({required this.regNo, required this.status});
-
-  factory AttendanceRow.fromJson(Map<String, dynamic> json) {
-    return AttendanceRow(
-      regNo: json['regNo']?.toString() ?? '',
-      status: json['status']?.toString() ?? '',
-    );
-  }
+  AttendanceRow({
+    required this.regNo,
+    required this.name,
+    required this.status,
+  });
 }

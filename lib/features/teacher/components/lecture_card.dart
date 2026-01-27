@@ -1,12 +1,12 @@
 import 'dart:io';
-import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
+
+import 'package:ams_try2/core/utils/attendance_submission_store.dart';
+import 'package:ams_try2/features/teacher/domain/entities/schedule.dart';
+import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
+import 'package:ams_try2/features/teacher/presentation/providers/attendance_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../core/utils/attendance_submission_store.dart';
-import '../domain/entities/schedule.dart';
-import '../presentation/lecture_card_mode.dart';
-import '../presentation/providers/attendance_provider.dart';
 
 class LectureCard extends ConsumerStatefulWidget {
   final Schedule schedule;
@@ -19,13 +19,13 @@ class LectureCard extends ConsumerStatefulWidget {
 }
 
 class _LectureCardState extends ConsumerState<LectureCard> {
-  final ImagePicker _picker = ImagePicker();
   static const int _maxPhotos = 6;
+  final ImagePicker _picker = ImagePicker();
 
-  /// 📸 Local photos (not persisted)
+  /// 📸 Local photo paths
   final List<String> _photoPaths = [];
 
-  /// ✅ Persistent submit state
+  /// ✅ Persistent submission state
   bool _submitted = false;
   bool _checkingSubmission = true;
 
@@ -34,7 +34,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   AttendanceNotifier get notifier =>
       ref.read(attendanceProvider(schedule.lectureId).notifier);
 
-  AttendanceState get attendance =>
+  AttendanceState get attendanceState =>
       ref.watch(attendanceProvider(schedule.lectureId));
 
   @override
@@ -45,18 +45,18 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
   Future<void> _loadSubmissionStatus() async {
     final submitted = await AttendanceSubmissionStore.isSubmitted(
-      widget.schedule.lectureId,
+      schedule.lectureId,
     );
 
-    if (mounted) {
-      setState(() {
-        _submitted = submitted;
-        _checkingSubmission = false;
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _submitted = submitted;
+      _checkingSubmission = false;
+    });
   }
 
-  /// ✅ Submit attendance (NO preview here)
+  /// 🚀 Submit attendance
   Future<void> _submitAttendance() async {
     if (schedule.lectureId.isEmpty) {
       _snack('Invalid lecture ID');
@@ -72,25 +72,44 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    final attendanceData = state.attendance;
-    if (attendanceData == null) {
+    if (state.attendance == null) {
       _snack('Attendance submission failed');
       return;
     }
-    debugPrint(
-      '🧪 Attendance rows BEFORE PDF: ${attendanceData.attendance.length}',
-    );
 
-    /// 💾 Persist submission state
+    debugPrint('🧪 Attendance rows: ${state.attendance!.attendance.length}');
+
     await AttendanceSubmissionStore.markSubmitted(schedule.lectureId);
-    ref.invalidate(attendanceFilesProvider);
+
+    if (!mounted) return;
+
     setState(() {
       _submitted = true;
     });
 
-    _snack('Attendance submitted');
+    _snack('Attendance submitted successfully');
   }
 
+  /// 📷 Pick image
+  Future<void> _pickImage(ImageSource source) async {
+    if (_photoPaths.length >= _maxPhotos) {
+      _snack('Maximum $_maxPhotos photos allowed');
+      return;
+    }
+
+    final XFile? image = await _picker.pickImage(
+      source: source,
+      imageQuality: 70,
+    );
+
+    if (image == null) return;
+
+    setState(() {
+      _photoPaths.add(image.path);
+    });
+  }
+
+  /// 📷 Image source picker
   Future<void> _showImageSourcePicker() async {
     if (schedule.lectureStatus != LectureStatus.inProgress) {
       _snack('Lecture is not in progress');
@@ -130,25 +149,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    if (_photoPaths.length >= _maxPhotos) {
-      _snack('Maximum $_maxPhotos photos allowed');
-      return;
-    }
-
-    final XFile? image = await _picker.pickImage(
-      source: source,
-      imageQuality: 70,
-    );
-
-    if (image == null) return;
-
-    setState(() {
-      _photoPaths.add(image.path);
-    });
-  }
-
-  /// ✅ Confirmation dialog
+  /// 🔔 Confirmation dialog
   Future<void> _confirm({
     required String title,
     required String message,
@@ -190,7 +191,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
     final status = schedule.lectureStatus;
     final canAct = status == LectureStatus.inProgress && !_submitted;
-    final loading = attendance.loading;
+    final loading = attendanceState.loading;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -200,7 +201,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔹 TITLE + STATUS
+            /// 🔹 HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -230,7 +231,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
             const Divider(height: 20),
 
-            /// 🔹 INFO ROW
+            /// 🔹 INFO
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -244,88 +245,43 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
             /// 🔹 PHOTO PREVIEW
             if (widget.mode == LectureCardMode.current &&
-                _photoPaths.isNotEmpty) ...[
-              Text(
-                'Photos (${_photoPaths.length}/$_maxPhotos)',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                _photoPaths.isNotEmpty)
+              _PhotoPreview(
+                paths: _photoPaths,
+                onRemove: (i) {
+                  setState(() {
+                    _photoPaths.removeAt(i);
+                  });
+                },
               ),
-              const SizedBox(height: 6),
-              SizedBox(
-                height: 80,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _photoPaths.length,
-                  itemBuilder: (_, i) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Stack(
-                      children: [
-                        Image.file(
-                          File(_photoPaths[i]),
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _photoPaths.removeAt(i);
-                              });
-                            },
-                            child: const CircleAvatar(
-                              radius: 10,
-                              backgroundColor: Colors.black54,
-                              child: Icon(
-                                Icons.close,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
 
             /// 🔹 ACTIONS
             if (widget.mode == LectureCardMode.current)
               Column(
                 children: [
-                  Column(
-                    children: [
-                      _ActionButton(
-                        label: 'Upload Photo',
-                        enabled: canAct && _photoPaths.length < _maxPhotos,
-                        onTap: _showImageSourcePicker,
-                      ),
-                      _ActionButton(
-                        label: 'Report Mass Bunk',
-                        enabled: canAct,
-                        onTap: () => _confirm(
-                          title: 'Report Mass Bunk',
-                          message: 'Are you sure you want to report mass bunk?',
-                          onConfirm: _submitAttendance,
-                        ),
-                      ),
-                      _ActionButton(
-                        label: 'Mark All Present',
-                        enabled: canAct,
-                        onTap: () => _confirm(
-                          title: 'Mark All Present',
-                          message: 'Are you sure you want to mark all present?',
-                          onConfirm: _submitAttendance,
-                        ),
-                      ),
-                    ],
+                  _ActionButton(
+                    label: 'Upload Photo',
+                    enabled: canAct && _photoPaths.length < _maxPhotos,
+                    onTap: _showImageSourcePicker,
                   ),
-
-                  /// 🔹 SUBMIT BUTTON
+                  _ActionButton(
+                    label: 'Report Mass Bunk',
+                    enabled: canAct,
+                    onTap: () => _confirm(
+                      title: 'Report Mass Bunk',
+                      message: 'Are you sure you want to report mass bunk?',
+                      onConfirm: _submitAttendance,
+                    ),
+                  ),
+                  _ActionButton(
+                    label: 'Mark All Present',
+                    enabled: canAct,
+                    onTap: () => _confirm(
+                      title: 'Mark All Present',
+                      message: 'Are you sure you want to mark all present?',
+                      onConfirm: _submitAttendance,
+                    ),
+                  ),
                   if (_photoPaths.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
@@ -349,39 +305,18 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                             : const Text('Submit Attendance'),
                       ),
                     ),
-
                   if (_submitted)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Attendance Submitted',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Attendance Submitted',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                 ],
-              ),
-
-            /// 🔹 CANCEL (ALL / UPCOMING)
-            if (widget.mode != LectureCardMode.current)
-              Align(
-                alignment: Alignment.center,
-                child: _ActionButton(
-                  label: 'Cancel Lecture',
-                  isDanger: true,
-                  enabled: status == LectureStatus.pending,
-                  onTap: () => _confirm(
-                    title: 'Cancel Lecture',
-                    message: 'Are you sure you want to cancel this lecture?',
-                    onConfirm: () {},
-                  ),
-                ),
               ),
           ],
         ),
@@ -390,7 +325,62 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   }
 }
 
-/// 🔹 STATUS TEXT
+/// ---------------- SMALL WIDGETS ----------------
+
+class _PhotoPreview extends StatelessWidget {
+  final List<String> paths;
+  final void Function(int index) onRemove;
+
+  const _PhotoPreview({required this.paths, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Photos (${paths.length}/6)',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 80,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: paths.length,
+            itemBuilder: (_, i) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Stack(
+                children: [
+                  Image.file(
+                    File(paths[i]),
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () => onRemove(i),
+                      child: const CircleAvatar(
+                        radius: 10,
+                        backgroundColor: Colors.black54,
+                        child: Icon(Icons.close, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+}
+
 class _StatusText extends StatelessWidget {
   final LectureStatus status;
 
@@ -415,7 +405,6 @@ class _StatusText extends StatelessWidget {
   }
 }
 
-/// 🔹 INFO ITEM
 class _InfoItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -434,7 +423,6 @@ class _InfoItem extends StatelessWidget {
   }
 }
 
-/// 🔹 ACTION BUTTON
 class _ActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -457,11 +445,7 @@ class _ActionButton extends StatelessWidget {
             ? (isDanger ? Colors.red : Colors.black)
             : Colors.grey,
       ),
-      child: Text(
-        label,
-        textAlign: TextAlign.start,
-        style: const TextStyle(fontSize: 18),
-      ),
+      child: Text(label, style: const TextStyle(fontSize: 18)),
     );
   }
 }
