@@ -1,8 +1,7 @@
-import 'dart:io';
 import 'package:ams_try2/core/navigation/slide_page_route.dart';
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
-import 'package:ams_try2/features/common/pdf_preview_page.dart';
+import 'package:ams_try2/features/create_class/presentation/create_class_page.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +17,7 @@ class TProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider.select((s) => s.auth?.user));
+
     final filesAsync = ref.watch(attendanceFilesProvider);
 
     if (user == null) {
@@ -42,125 +42,17 @@ class TProfilePage extends ConsumerWidget {
         children: [
           const SizedBox(height: 8),
 
-          ///  VIEW ATTENDANCE (PDFs)
-          // Container(
-          //   color: Colors.white,
-          //   child: ExpansionTile(
-          //     leading: const Icon(Icons.assignment),
-          //     title: const Text(
-          //       'View Attendance',
-          //       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          //     ),
-          //     subtitle: const Text(
-          //       'Preview attendance sheets',
-          //       style: TextStyle(fontSize: 13),
-          //     ),
-          //     children: [
-          //       /// 🧹 CLEAR ALL PDFs
-          //       Padding(
-          //         padding: const EdgeInsets.symmetric(
-          //           horizontal: 16,
-          //           vertical: 8,
-          //         ),
-          //         child: Align(
-          //           alignment: Alignment.centerRight,
-          //           child: TextButton.icon(
-          //             icon: const Icon(Icons.delete_forever, color: Colors.red),
-          //             label: const Text(
-          //               'Clear All',
-          //               style: TextStyle(color: Colors.red),
-          //             ),
-          //             onPressed: () async {
-          //               final ok = await showDialog<bool>(
-          //                 context: context,
-          //                 builder: (_) => AlertDialog(
-          //                   title: const Text('Clear Attendance PDFs'),
-          //                   content: const Text(
-          //                     'This will permanently delete all attendance PDF files. Continue?',
-          //                   ),
-          //                   actions: [
-          //                     TextButton(
-          //                       onPressed: () => Navigator.pop(context, false),
-          //                       child: const Text('Cancel'),
-          //                     ),
-          //                     ElevatedButton(
-          //                       style: ElevatedButton.styleFrom(
-          //                         backgroundColor: Colors.red,
-          //                       ),
-          //                       onPressed: () => Navigator.pop(context, true),
-          //                       child: const Text('Delete'),
-          //                     ),
-          //                   ],
-          //                 ),
-          //               );
-          //
-          //               if (ok == true) {
-          //                 await AttendanceFileUtils.clearAll(ref);
-          //                 ScaffoldMessenger.of(context).showSnackBar(
-          //                   const SnackBar(
-          //                     content: Text('All attendance PDFs deleted'),
-          //                   ),
-          //                 );
-          //               }
-          //             },
-          //           ),
-          //         ),
-          //       ),
-          //
-          //       /// 📂 PDF FILE LIST
-          //       filesAsync.when(
-          //         loading: () => const Padding(
-          //           padding: EdgeInsets.all(16),
-          //           child: CircularProgressIndicator(),
-          //         ),
-          //         error: (e, _) => Padding(
-          //           padding: const EdgeInsets.all(16),
-          //           child: Text(
-          //             'Failed to load attendance files',
-          //             style: TextStyle(color: Colors.red),
-          //           ),
-          //         ),
-          //         data: (List<File> files) {
-          //           if (files.isEmpty) {
-          //             return const Padding(
-          //               padding: EdgeInsets.all(16),
-          //               child: Text(
-          //                 'No attendance PDFs available',
-          //                 style: TextStyle(color: Colors.grey),
-          //               ),
-          //             );
-          //           }
-          //
-          //           return Column(
-          //             children: files.map((file) {
-          //               final name = file.path.split('/').last;
-          //
-          //               return ListTile(
-          //                 leading: const Icon(
-          //                   Icons.picture_as_pdf,
-          //                   color: Colors.red,
-          //                 ),
-          //                 title: Text(name),
-          //                 subtitle: const Text('Tap to preview'),
-          //                 trailing: const Icon(Icons.visibility),
-          //                 onTap: () {
-          //                   Navigator.push(
-          //                     context,
-          //                     MaterialPageRoute(
-          //                       builder: (_) => PdfPreviewPage(file: file),
-          //                     ),
-          //                   );
-          //                 },
-          //               );
-          //             }).toList(),
-          //           );
-          //         },
-          //       ),
-          //     ],
-          //   ),
-          // ),
-
           /// 🔹 REPORT COMPLAINT
+
+          /// 🔹 CREATE CLASS  ✅ (RESTORED)
+          _ProfileTile(
+            icon: Icons.class_outlined,
+            title: 'Create Class',
+            subtitle: 'Schedule a new class',
+            onTap: () {
+              Navigator.push(context, CreateClassPage.route());
+            },
+          ),
           _ProfileTile(
             icon: Icons.report_problem_outlined,
             title: 'Report a Complaint',

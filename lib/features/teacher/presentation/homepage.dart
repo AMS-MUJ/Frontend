@@ -38,7 +38,7 @@ class Thomepage extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person, size: 36),
+            icon: const Icon(Icons.menu, size: 36),
             onPressed: () {
               Navigator.push(context, TProfilePage.route());
             },
