@@ -17,7 +17,7 @@ class ApiRoutes {
   // GET ?courseName=&branch=
 
   static const String createPermanentClass = '/class/permanent';
-  static const String createTemporaryClass = '/class/temporary';
+  static const String createTemporaryClass = '/attendance/create_class_temp';
 
   // ================= ATTENDANCE =================
   static const String markAttendance = '/attendance/mark-face';

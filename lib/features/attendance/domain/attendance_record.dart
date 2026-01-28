@@ -4,6 +4,5 @@ class AttendanceRecord {
 
   AttendanceRecord({required this.id, required this.basePath});
 
-  String get pdfPath => '$basePath.pdf';
   String get excelPath => '$basePath.xlsx';
 }

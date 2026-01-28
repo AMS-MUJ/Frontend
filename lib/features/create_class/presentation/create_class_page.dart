@@ -50,6 +50,16 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(createClassNotifierProvider);
     final notifier = ref.read(createClassNotifierProvider.notifier);
+    ref.listen(createClassNotifierProvider, (previous, next) {
+      if (previous?.submitting == true && next.submitting == false) {
+        if (next.error != null) {
+          _snack('Class not created. Please try again.');
+        } else {
+          Navigator.pop(context);
+          _snack('Class created successfully', isError: false);
+        }
+      }
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
@@ -431,6 +441,22 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
 
     final bool isPermanent = classType == 'PERMANENT';
 
+    if (isPermanent && selectedDays.isEmpty) {
+      _snack('Please select at least one day');
+      return;
+    }
+
+    if (!isPermanent) {
+      if (selectedDate == null) {
+        _snack('Please select a date');
+        return;
+      }
+      if (selectedTimes.isEmpty) {
+        _snack('Please select at least one time slot');
+        return;
+      }
+    }
+
     final payload = {
       'year': selectedYear,
       'branch': selectedBranch,
@@ -448,7 +474,16 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
         .submitClass(isPermanent: isPermanent, payload: payload);
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  void _snack(String msg, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(color: Colors.white)),
+        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 }

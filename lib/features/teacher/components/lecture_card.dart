@@ -258,6 +258,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
             /// 🔹 ACTIONS
             if (widget.mode == LectureCardMode.current)
               Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ActionButton(
                     label: 'Upload Photo',

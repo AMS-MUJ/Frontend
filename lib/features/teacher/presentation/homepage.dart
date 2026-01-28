@@ -158,7 +158,7 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-/// ATTENDANCE LIST
+/// ATTENDANCE LIST (EXCEL ONLY)
 class _AttendanceList extends ConsumerWidget {
   const _AttendanceList();
 
@@ -175,7 +175,7 @@ class _AttendanceList extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Attendance Records',
+                'Attendance Excel Files',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               TextButton.icon(
@@ -233,19 +233,17 @@ class _AttendanceList extends ConsumerWidget {
                 itemCount: records.length,
                 itemBuilder: (_, index) {
                   final record = records[index];
-                  final name = record.pdfPath.split('/').last;
+                  final name = record.excelPath.split('/').last;
+
                   return ListTile(
-                    leading: const Icon(
-                      Icons.description_outlined,
-                      color: Colors.blueGrey,
-                    ),
+                    leading: const Icon(Icons.table_chart, color: Colors.green),
                     title: Text(
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showOpenOptions(context, record),
+                    onTap: () => _openExcel(context, record),
                   );
                 },
               );
@@ -257,46 +255,7 @@ class _AttendanceList extends ConsumerWidget {
   }
 }
 
-/// OPEN OPTIONS
-void _showOpenOptions(BuildContext context, AttendanceRecord record) {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (_) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Open Attendance',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-            title: const Text('Open PDF'),
-            onTap: () {
-              Navigator.pop(context);
-              OpenFilex.open(record.pdfPath);
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.table_chart, color: Colors.green),
-            title: const Text('Open Excel'),
-            onTap: () {
-              Navigator.pop(context);
-              OpenFilex.open(record.excelPath);
-            },
-          ),
-
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
-  );
+/// OPEN EXCEL
+void _openExcel(BuildContext context, AttendanceRecord record) {
+  OpenFilex.open(record.excelPath);
 }

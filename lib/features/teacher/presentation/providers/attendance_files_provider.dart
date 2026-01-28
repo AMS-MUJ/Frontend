@@ -9,27 +9,26 @@ final attendanceFilesProvider = FutureProvider<List<AttendanceRecord>>((
   try {
     final dir = await getApplicationDocumentsDirectory();
 
-    final pdfFiles = dir
+    final excelFiles = dir
         .listSync()
         .whereType<File>()
-        .where((file) => file.path.toLowerCase().endsWith('.pdf'))
+        .where((file) => file.path.toLowerCase().endsWith('.xlsx'))
         .toList();
 
-    pdfFiles.sort(
+    excelFiles.sort(
       (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
     );
 
-    return pdfFiles.map((pdf) {
-      final basePath = pdf.path.replaceAll(
-        RegExp(r'\.pdf$', caseSensitive: false),
+    return excelFiles.map((file) {
+      final basePath = file.path.replaceAll(
+        RegExp(r'\.xlsx$', caseSensitive: false),
         '',
       );
       final id = basePath.split('_').last;
 
       return AttendanceRecord(id: id, basePath: basePath);
     }).toList();
-  } catch (e) {
-    // Fail gracefully — UI will show "No attendance records found"
+  } catch (_) {
     return [];
   }
 });
