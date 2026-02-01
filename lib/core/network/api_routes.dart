@@ -16,7 +16,7 @@ class ApiRoutes {
 
   // GET ?courseName=&branch=
 
-  static const String createPermanentClass = '/class/permanent';
+  static const String createPermanentClass = '/attendance/add-permanent';
   static const String createTemporaryClass = '/attendance/create_class_temp';
 
   // ================= ATTENDANCE =================

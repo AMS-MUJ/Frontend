@@ -1,4 +1,4 @@
-package com.example.ams_try2
+package com.example.ams_frontend
 
 import io.flutter.embedding.android.FlutterActivity
 
