@@ -267,6 +267,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                   ),
                   _ActionButton(
                     label: 'Report Mass Bunk',
+                    isDanger: true,
                     enabled: canAct,
                     onTap: () => _confirm(
                       title: 'Report Mass Bunk',

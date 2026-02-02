@@ -1,4 +1,3 @@
-import '../../domain/entities/attendance.dart';
 import 'attendance_student_model.dart';
 
 class AttendanceModel {

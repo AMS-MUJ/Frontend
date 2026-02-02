@@ -72,6 +72,8 @@ class StudentDashboardPage extends ConsumerWidget {
             subtitle: 'Sign out from this account',
             onTap: () async {
               await ref.read(authNotifierProvider.notifier).logout();
+              if (!context.mounted) return;
+
               Navigator.pushAndRemoveUntil(
                 context,
                 LoginPage.route(),

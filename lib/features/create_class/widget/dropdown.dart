@@ -42,7 +42,7 @@ class Dropdown<T> extends StatelessWidget {
         isExpanded: true,
         // ✅ important
         alignment: AlignmentDirectional.bottomStart,
-        value: value,
+        initialValue: value,
         icon: Icon(
           Icons.unfold_more_rounded,
           color: Colors.grey.shade400,

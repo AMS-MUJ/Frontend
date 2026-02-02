@@ -3,10 +3,10 @@ import '../../domain/entities/auth.dart';
 
 class AuthModel extends Auth {
   AuthModel({
-    required String accessToken,
-    required UserModel user,
-    required AuthStatus status,
-  }) : super(accessToken: accessToken, user: user, status: status);
+    required super.accessToken,
+    required UserModel super.user,
+    required super.status,
+  });
 
   factory AuthModel.fromJson(Map<String, dynamic> json) {
     final token = json['token']?.toString() ?? '';

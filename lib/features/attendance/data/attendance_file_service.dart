@@ -10,7 +10,6 @@ class AttendanceFileService {
     }
 
     final dir = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
 
     final fileName = '${attendance.lectureId}.xlsx';
 

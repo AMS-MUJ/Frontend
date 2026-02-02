@@ -9,7 +9,7 @@ class AuthField extends StatelessWidget {
 
   const AuthField({
     super.key,
-    this.hintText = "example@muj.manipal.edu",
+    this.hintText = "Enter you manipal email!",
     required this.controller,
     required this.errorText,
     this.isObscureText = false,

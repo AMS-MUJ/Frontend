@@ -21,9 +21,7 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     await dotenv.load(fileName: '.env');
   } catch (e) {
-    print(
-      "Warning: .env file not found. Ensure it exists in root and is added to pubspec.yaml",
-    );
+    debugPrint('⚠️ dotenv load failed: ${e.toString()}');
   }
 
   // Low-level dependencies
