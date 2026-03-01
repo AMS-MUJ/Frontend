@@ -1,3 +1,4 @@
+import 'package:ams_try2/core/services/attendance_submission_manager.dart';
 import 'package:ams_try2/features/splash/splash_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,36 +36,48 @@ void main() async {
   final repo = AuthRepositoryImpl(remote: remote, local: local);
   final loginUseCase = LoginUseCase(repo);
 
-  // Auth notifier (single instance)
-  final authNotifierInstance = AuthNotifier(
-    loginUseCase: loginUseCase,
-    repository: repo,
-  );
-
   runApp(
     ProviderScope(
       overrides: [
-        authNotifierProvider.overrideWith((ref) => authNotifierInstance),
+        authNotifierProvider.overrideWith(
+          (ref) => AuthNotifier(
+            ref: ref,
+            loginUseCase: loginUseCase,
+            repository: repo,
+          ),
+        ),
       ],
-      child: const MyApp(),
+      child: const AppBootstrap(),
     ),
   );
 }
 
-class MyApp extends ConsumerStatefulWidget {
-  const MyApp({super.key});
+/// ------------------------------------------------------------
+/// BOOTSTRAP
+/// ------------------------------------------------------------
+/// This ensures long-running services start BEFORE UI renders.
+/// Very important for background uploads.
+class AppBootstrap extends ConsumerWidget {
+  const AppBootstrap({super.key});
 
   @override
-  ConsumerState<MyApp> createState() => _MyAppState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 🔴 Create the submission manager immediately
+    // Now it belongs to the ProviderContainer (app lifetime)
+    ref.read(attendanceSubmissionManagerProvider);
+
+    // Also load cached auth
+    ref.read(authNotifierProvider.notifier).loadCachedAuth();
+
+    return const MyApp();
+  }
 }
 
-class _MyAppState extends ConsumerState<MyApp> {
-  @override
-  void initState() {
-    super.initState();
-    // Load cached auth once app starts
-    ref.read(authNotifierProvider.notifier).loadCachedAuth();
-  }
+/// ------------------------------------------------------------
+/// MAIN APP UI
+/// ------------------------------------------------------------
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {

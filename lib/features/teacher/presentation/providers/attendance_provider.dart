@@ -1,3 +1,4 @@
+import 'package:ams_try2/core/services/attendance_submission_manager.dart';
 import 'package:ams_try2/features/attendance/data/attendance_file_service.dart';
 import 'package:ams_try2/features/teacher/domain/entities/attendance.dart';
 import 'package:ams_try2/features/teacher/domain/repository/attendance_repository.dart';
@@ -38,21 +39,15 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
     try {
       state = state.copyWith(loading: true, error: null);
 
-      // 1️⃣ Backend → JSON
-      final result = await repo.markAttendance(lectureId, imagePaths);
+      // Instead of uploading → enqueue job
+      final manager = ref.read(attendanceSubmissionManagerProvider);
 
-      if (result.attendance.isEmpty) {
-        throw Exception('No attendance rows received');
+      for (final path in imagePaths) {
+        manager.submitAttendance(lectureId: lectureId, imagePath: path);
       }
 
-      // 2️⃣ JSON → PDF/Excel (LOCAL)
-      await AttendanceFileService.generateFiles(attendance: result);
-
-      // 3️⃣ Refresh file-based UI
-      ref.invalidate(attendanceFilesProvider);
-
-      // 4️⃣ Update state
-      state = state.copyWith(loading: false, attendance: result, error: null);
+      // Immediately reflect "submission started"
+      state = state.copyWith(loading: false, attendance: null, error: null);
     } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
     }

@@ -1,3 +1,7 @@
+import 'package:ams_try2/features/teacher/presentation/providers/attendance_provider.dart';
+import 'package:ams_try2/features/teacher/presentation/providers/filtered_schedule_provider.dart';
+import 'package:ams_try2/features/teacher/presentation/providers/home_filter_provider.dart';
+import 'package:ams_try2/features/teacher/providers/home_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth.dart';
@@ -26,11 +30,15 @@ class AuthState {
 ///  - [LoginUseCase] for performing login
 ///  - [AuthRepository] for checking cached auth & logout
 class AuthNotifier extends StateNotifier<AuthState> {
+  final Ref ref;
   final LoginUseCase loginUseCase;
   final AuthRepository repository;
 
-  AuthNotifier({required this.loginUseCase, required this.repository})
-    : super(const AuthState());
+  AuthNotifier({
+    required this.ref,
+    required this.loginUseCase,
+    required this.repository,
+  }) : super(const AuthState());
 
   /// Perform login with email & password.
   /// On success the state.auth will be set to the returned Auth.

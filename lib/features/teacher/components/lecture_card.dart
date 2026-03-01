@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:ams_try2/core/services/attendance_submission_manager.dart';
 import 'package:ams_try2/core/utils/attendance_submission_store.dart';
 import 'package:ams_try2/features/teacher/domain/entities/schedule.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
@@ -63,22 +64,14 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    await notifier.submitAttendance(_photoPaths);
+    final manager = ref.read(attendanceSubmissionManagerProvider);
 
-    final state = ref.read(attendanceProvider(schedule.lectureId));
-
-    if (state.error != null) {
-      _snack(state.error!);
-      return;
+    // enqueue each photo
+    for (final path in _photoPaths) {
+      manager.submitAttendance(lectureId: schedule.lectureId, imagePath: path);
     }
 
-    if (state.attendance == null) {
-      _snack('Attendance submission failed');
-      return;
-    }
-
-    debugPrint('🧪 Attendance rows: ${state.attendance!.attendance.length}');
-
+    // mark locally immediately (job accepted, not completed)
     await AttendanceSubmissionStore.markSubmitted(schedule.lectureId);
 
     if (!mounted) return;
@@ -87,7 +80,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       _submitted = true;
     });
 
-    _snack('Attendance submitted successfully');
+    _snack('Attendance is being uploaded in background');
   }
 
   /// 📷 Pick image

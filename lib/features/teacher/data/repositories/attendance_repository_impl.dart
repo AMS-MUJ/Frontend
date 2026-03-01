@@ -1,6 +1,6 @@
-import '../datasources/attendance_remote_data_source.dart';
-import '../../domain/entities/attendance.dart';
-import '../../domain/repository/attendance_repository.dart';
+import 'package:ams_try2/features/teacher/data/datasources/attendance_remote_data_source.dart';
+import 'package:ams_try2/features/teacher/domain/entities/attendance.dart';
+import 'package:ams_try2/features/teacher/domain/repository/attendance_repository.dart';
 
 class AttendanceRepositoryImpl implements AttendanceRepository {
   final AttendanceRemoteDataSource remote;
@@ -8,11 +8,12 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   AttendanceRepositoryImpl(this.remote);
 
   @override
-  Future<Attendance> markAttendance(
+  @override
+  Future<Attendance> uploadSingleImage(
     String lectureId,
-    List<String> imagePaths,
+    String imagePath,
   ) async {
-    final model = await remote.markAttendance(lectureId, imagePaths);
+    final model = await remote.uploadSingleImage(lectureId, imagePath);
 
     return Attendance(
       lectureId: model.lectureId,

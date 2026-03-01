@@ -23,9 +23,8 @@ class Thomepage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final homeState = ref.watch(homeProvider);
     final selectedFilter = ref.watch(homeFilterProvider);
-    final filteredSchedules = ref.watch(filteredScheduleProvider);
+    final schedulesAsync = ref.watch(filteredScheduleProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -79,7 +78,7 @@ class Thomepage extends ConsumerWidget {
 
           /// MAIN CONTENT
           Expanded(
-            child: homeState.when(
+            child: schedulesAsync.when(
               loading: () => ListView.builder(
                 itemCount: 4,
                 itemBuilder: (_, __) => const LectureCardShimmer(),
@@ -90,12 +89,12 @@ class Thomepage extends ConsumerWidget {
                   style: const TextStyle(color: Colors.red),
                 ),
               ),
-              data: (_) {
+              data: (schedules) {
                 if (selectedFilter == HomeFilter.attendance) {
                   return const _AttendanceList();
                 }
 
-                if (filteredSchedules.isEmpty) {
+                if (schedules.isEmpty) {
                   return const Center(child: Text('No classes available'));
                 }
 
@@ -104,10 +103,10 @@ class Thomepage extends ConsumerWidget {
                     ref.invalidate(homeProvider);
                   },
                   child: ListView.builder(
-                    itemCount: filteredSchedules.length,
+                    itemCount: schedules.length,
                     itemBuilder: (context, index) {
                       return LectureCard(
-                        schedule: filteredSchedules[index],
+                        schedule: schedules[index],
                         mode: _mapFilterToCardMode(selectedFilter),
                       );
                     },
