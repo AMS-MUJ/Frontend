@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final attendanceRepositoryProvider = Provider<AttendanceRepository>((ref) {
   final dio = ref.read(dioProvider);
-
   final remote = AttendanceRemoteDataSource(dio);
 
   return AttendanceRepositoryImpl(remote);

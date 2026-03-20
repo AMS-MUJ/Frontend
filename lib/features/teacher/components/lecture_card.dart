@@ -1,6 +1,4 @@
 import 'dart:io';
-
-import 'package:ams_try2/core/services/attendance_submission_manager.dart';
 import 'package:ams_try2/core/utils/attendance_submission_store.dart';
 import 'package:ams_try2/features/teacher/domain/entities/schedule.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
@@ -11,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 class LectureCard extends ConsumerStatefulWidget {
   final Schedule schedule;
+
   final LectureCardMode mode;
 
   const LectureCard({super.key, required this.schedule, required this.mode});
@@ -22,6 +21,7 @@ class LectureCard extends ConsumerStatefulWidget {
 class _LectureCardState extends ConsumerState<LectureCard> {
   static const int _maxPhotos = 6;
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
 
   /// 📸 Local photo paths
   final List<String> _photoPaths = [];
@@ -64,14 +64,14 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    final manager = ref.read(attendanceSubmissionManagerProvider);
-
-    // enqueue each photo
-    for (final path in _photoPaths) {
-      manager.submitAttendance(lectureId: schedule.lectureId, imagePath: path);
+    if (_photoPaths.isEmpty) {
+      _snack('Please upload at least one photo');
+      return;
     }
 
-    // mark locally immediately (job accepted, not completed)
+    // 🔴 Call notifier instead of manager
+    await notifier.submitAttendance(_photoPaths);
+
     await AttendanceSubmissionStore.markSubmitted(schedule.lectureId);
 
     if (!mounted) return;
@@ -184,7 +184,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
     final status = schedule.lectureStatus;
     final canAct = status == LectureStatus.inProgress && !_submitted;
-    final loading = attendanceState.loading;
+    final loading = attendanceState.status == AttendanceStatus.inProgress;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

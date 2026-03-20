@@ -1,32 +1,38 @@
 import 'package:ams_try2/core/services/attendance_submission_manager.dart';
-import 'package:ams_try2/features/attendance/data/attendance_file_service.dart';
 import 'package:ams_try2/features/teacher/domain/entities/attendance.dart';
 import 'package:ams_try2/features/teacher/domain/repository/attendance_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'attendance_files_provider.dart';
 import 'attendance_repository_provider.dart';
 
+/// ---------------- STATUS ----------------
+enum AttendanceStatus { idle, inProgress, success, failed }
+
+/// ---------------- STATE ----------------
 class AttendanceState {
-  final bool loading;
+  final AttendanceStatus status;
   final Attendance? attendance;
   final String? error;
 
-  AttendanceState({this.loading = false, this.attendance, this.error});
+  AttendanceState({
+    this.status = AttendanceStatus.idle,
+    this.attendance,
+    this.error,
+  });
 
   AttendanceState copyWith({
-    bool? loading,
+    AttendanceStatus? status,
     Attendance? attendance,
     String? error,
   }) {
     return AttendanceState(
-      loading: loading ?? this.loading,
+      status: status ?? this.status,
       attendance: attendance ?? this.attendance,
       error: error,
     );
   }
 }
 
+/// ---------------- NOTIFIER ----------------
 class AttendanceNotifier extends StateNotifier<AttendanceState> {
   final AttendanceRepository repo;
   final Ref ref;
@@ -36,25 +42,32 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
     : super(AttendanceState());
 
   Future<void> submitAttendance(List<String> imagePaths) async {
-    try {
-      state = state.copyWith(loading: true, error: null);
+    // 🔴 CORE FIX: STATUS GUARD
+    if (state.status == AttendanceStatus.inProgress ||
+        state.status == AttendanceStatus.success) {
+      return;
+    }
 
-      // Instead of uploading → enqueue job
+    try {
+      // 🔴 mark as in progress BEFORE doing anything
+      state = state.copyWith(status: AttendanceStatus.inProgress, error: null);
+
       final manager = ref.read(attendanceSubmissionManagerProvider);
 
-      for (final path in imagePaths) {
-        manager.submitAttendance(lectureId: lectureId, imagePath: path);
-      }
+      manager.submitAttendance(lectureId: lectureId, imagePaths: imagePaths);
 
-      // Immediately reflect "submission started"
-      state = state.copyWith(loading: false, attendance: null, error: null);
+      // 🔴 we mark success because job is accepted (not completed)
+      state = state.copyWith(status: AttendanceStatus.success);
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(
+        status: AttendanceStatus.failed,
+        error: e.toString(),
+      );
     }
   }
 }
 
-/// ✅ THIS IS WHAT YOUR UI IS LOOKING FOR
+/// ---------------- PROVIDER ----------------
 final attendanceProvider =
     StateNotifierProvider.family<AttendanceNotifier, AttendanceState, String>((
       ref,

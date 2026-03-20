@@ -1,5 +1,5 @@
 import '../entities/attendance.dart';
 
 abstract class AttendanceRepository {
-  Future<Attendance> uploadSingleImage(String lectureId, String imagePath);
+  Future<Attendance> markAttendance(String lectureId, List<String> imagePaths);
 }

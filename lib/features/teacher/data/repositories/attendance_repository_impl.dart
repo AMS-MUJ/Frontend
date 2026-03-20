@@ -8,12 +8,11 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   AttendanceRepositoryImpl(this.remote);
 
   @override
-  @override
-  Future<Attendance> uploadSingleImage(
+  Future<Attendance> markAttendance(
     String lectureId,
-    String imagePath,
+    List<String> imagePaths,
   ) async {
-    final model = await remote.uploadSingleImage(lectureId, imagePath);
+    final model = await remote.markAttendance(lectureId, imagePaths);
 
     return Attendance(
       lectureId: model.lectureId,

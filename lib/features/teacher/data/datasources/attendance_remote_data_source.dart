@@ -8,15 +8,20 @@ class AttendanceRemoteDataSource {
 
   AttendanceRemoteDataSource(this.dio);
 
-  Future<AttendanceModel> uploadSingleImage(
+  Future<AttendanceModel> markAttendance(
     String lectureId,
-    String imagePath,
+    List<String> imagePaths,
   ) async {
     final token = await secureStorage.read(key: 'token');
 
-    final formData = FormData.fromMap({
-      "images": await MultipartFile.fromFile(imagePath),
-    });
+    final formData = FormData();
+
+    // Attach all images to the same multipart request
+    for (final path in imagePaths) {
+      formData.files.add(
+        MapEntry("images", await MultipartFile.fromFile(path)),
+      );
+    }
 
     final response = await dio.post(
       '${ApiRoutes.markAttendance}/$lectureId',
