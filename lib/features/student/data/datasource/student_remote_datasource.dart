@@ -7,9 +7,8 @@ class StudentRemoteDatasource {
   StudentRemoteDatasource(this.apiClient);
 
   Future<Map<String, dynamic>> getStudentHome() async {
-    // ApiClient already returns decoded JSON
     final response = await apiClient.get(ApiRoutes.studentDashboard);
 
-    return response;
+    return response.data;
   }
 }

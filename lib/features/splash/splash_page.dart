@@ -22,7 +22,6 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
   Future<void> _bootstrap() async {
     try {
-      /// 🔹 Run tasks in parallel
       await Future.wait([
         ref.read(authNotifierProvider.notifier).loadCachedAuth(),
         Future.delayed(const Duration(milliseconds: 400)), // UX smoothness
@@ -38,12 +37,15 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         return;
       }
 
-      final role = authState.auth!.user.role.toLowerCase();
-
-      if (role == 'teacher') {
-        _go(const Thomepage());
-      } else {
-        _go(const StudentHomePage());
+      switch (authState.auth?.role.toLowerCase()) {
+        case 'teacher':
+          _go(const Thomepage());
+          break;
+        case 'student':
+          _go(const StudentHomePage());
+          break;
+        default:
+          _go(const StudentHomePage());
       }
     } catch (e, stack) {
       /// -Absolute safety net

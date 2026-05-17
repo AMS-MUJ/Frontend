@@ -1,11 +1,11 @@
-import 'package:ams_try2/core/storage/secure_storage.dart';
+import 'package:ams_try2/core/error/failure.dart';
+import 'package:ams_try2/features/auth/data/datasource/auth_remote_data_source.dart';
+import 'package:ams_try2/features/auth/data/models/auth_model.dart';
+import 'package:ams_try2/features/auth/domain/entities/auth.dart';
+import 'package:ams_try2/features/auth/domain/repositories/auth_repository.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:fpdart/fpdart.dart';
-import '../../../../core/error/failure.dart';
-import '../../domain/entities/auth.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../datasource/auth_local_data_source.dart';
-import '../datasource/auth_remote_data_source.dart';
-import '../models/auth_model.dart';
+import 'package:ams_try2/features/auth/data/datasource/auth_local_data_source.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remote;
@@ -23,13 +23,15 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-      await secureStorage.write(key: 'token', value: authModel.accessToken);
+
+      /// Single source of truth (local handles token + user)
+      debugPrint('CALLING cacheAuth');
       await local.cacheAuth(authModel);
-      return Right(authModel); // AuthModel extends Auth
+
+      return Right(authModel.toEntity());
     } on ServerException catch (e) {
       return Left(Failure(e.message));
     } on CacheException catch (e) {
-      // Cache failure: still a failure — report it upstream
       return Left(Failure(e.message));
     } catch (e) {
       return Left(Failure(e.toString()));
@@ -39,8 +41,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, Auth?>> getSignedInAuth() async {
     try {
-      final auth = await local.getCachedAuth(); // may be null
-      return Right(auth);
+      final auth = await local.getCachedAuth();
+      return Right(auth?.toEntity());
     } catch (_) {
       return Left(Failure('Cache read failed'));
     }
@@ -48,7 +50,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    /// ✅ Local handles everything (token + user)
     await local.clear();
-    await secureStorage.delete(key: 'token');
   }
 }

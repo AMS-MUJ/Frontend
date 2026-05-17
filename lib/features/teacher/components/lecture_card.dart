@@ -1,15 +1,16 @@
+import 'dart:async';
 import 'dart:io';
-import 'package:ams_try2/core/utils/attendance_submission_store.dart';
+import 'package:ams_try2/core/services/attendance_submission_manager.dart';
 import 'package:ams_try2/features/teacher/domain/entities/schedule.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_provider.dart';
+import 'package:ams_try2/features/teacher/presentation/providers/filtered_schedule_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 class LectureCard extends ConsumerStatefulWidget {
   final Schedule schedule;
-
   final LectureCardMode mode;
 
   const LectureCard({super.key, required this.schedule, required this.mode});
@@ -21,44 +22,81 @@ class LectureCard extends ConsumerStatefulWidget {
 class _LectureCardState extends ConsumerState<LectureCard> {
   static const int _maxPhotos = 6;
   final ImagePicker _picker = ImagePicker();
-  bool _isSubmitting = false;
-
-  /// 📸 Local photo paths
   final List<String> _photoPaths = [];
 
-  /// ✅ Persistent submission state
-  bool _submitted = false;
-  bool _checkingSubmission = true;
+  // Only local UI state — submission truth comes from schedule.attendanceMarked
+  bool _isSubmitting = false;
+
+  StreamSubscription<SubmissionResult>? _resultSub;
+  bool _subscribed = false;
 
   Schedule get schedule => widget.schedule;
 
-  AttendanceNotifier get notifier =>
-      ref.read(attendanceProvider(schedule.lectureId).notifier);
-
-  AttendanceState get attendanceState =>
-      ref.watch(attendanceProvider(schedule.lectureId));
+  // Derived directly from backend — no local cache needed
+  bool get _submitted => schedule.attendanceMarked;
 
   @override
-  void initState() {
-    super.initState();
-    _loadSubmissionStatus();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_subscribed) {
+      _subscribed = true;
+      _listenToResults();
+    }
   }
 
-  Future<void> _loadSubmissionStatus() async {
-    final submitted = await AttendanceSubmissionStore.isSubmitted(
-      schedule.lectureId,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _submitted = submitted;
-      _checkingSubmission = false;
-    });
+  @override
+  void dispose() {
+    _resultSub?.cancel();
+    super.dispose();
   }
 
-  /// 🚀 Submit attendance
+  // -------------------------------------------------------------------------
+  // Result stream — only drives upload spinner and error snacks.
+  // Actual "submitted" state comes from backend via schedule refresh.
+  // -------------------------------------------------------------------------
+  void _listenToResults() {
+    _resultSub?.cancel();
+
+    if (schedule.lectureId.isEmpty) {
+      debugPrint(
+        '⚠️ LectureCard: empty lectureId for ${schedule.subject}, '
+        'skipping result subscription',
+      );
+      return;
+    }
+
+    final myLectureId = schedule.lectureId;
+
+    _resultSub = ref
+        .read(attendanceSubmissionManagerProvider)
+        .results
+        .where((r) => r.lectureId == myLectureId)
+        .listen((result) {
+          if (!mounted) return;
+
+          if (result.success) {
+            setState(() {
+              _isSubmitting = false;
+              _photoPaths.clear();
+            });
+            // Invalidate schedule — backend now returns is_marked: true
+            // which flows into schedule.attendanceMarked and rebuilds the UI
+            ref.invalidate(filteredScheduleProvider);
+            _snack('Attendance submitted successfully');
+          } else {
+            setState(() => _isSubmitting = false);
+            ref.read(attendanceProvider(myLectureId).notifier).reset();
+            _snack('Upload failed: ${result.error ?? 'unknown error'}');
+          }
+        });
+  }
+
+  // -------------------------------------------------------------------------
+  // Submit
+  // -------------------------------------------------------------------------
   Future<void> _submitAttendance() async {
+    if (_isSubmitting || _submitted) return;
+
     if (schedule.lectureId.isEmpty) {
       _snack('Invalid lecture ID');
       return;
@@ -69,21 +107,24 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    // 🔴 Call notifier instead of manager
-    await notifier.submitAttendance(_photoPaths);
+    setState(() => _isSubmitting = true);
 
-    await AttendanceSubmissionStore.markSubmitted(schedule.lectureId);
+    try {
+      await ref
+          .read(attendanceProvider(schedule.lectureId).notifier)
+          .submitAttendance(List.of(_photoPaths));
 
-    if (!mounted) return;
-
-    setState(() {
-      _submitted = true;
-    });
-
-    _snack('Attendance is being uploaded in background');
+      _snack('Attendance upload started');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      _snack('Failed to start upload: $e');
+    }
   }
 
-  /// 📷 Pick image
+  // -------------------------------------------------------------------------
+  // Photo picking
+  // -------------------------------------------------------------------------
   Future<void> _pickImage(ImageSource source) async {
     if (_photoPaths.length >= _maxPhotos) {
       _snack('Maximum $_maxPhotos photos allowed');
@@ -95,22 +136,20 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       imageQuality: 70,
     );
 
-    if (image == null) return;
-
-    setState(() {
-      _photoPaths.add(image.path);
-    });
+    if (image == null || !mounted) return;
+    setState(() => _photoPaths.add(image.path));
   }
 
-  /// 📷 Image source picker
   Future<void> _showImageSourcePicker() async {
     if (schedule.lectureStatus != LectureStatus.inProgress) {
       _snack('Lecture is not in progress');
       return;
     }
 
-    if (_submitted) {
-      _snack('Attendance already submitted');
+    if (_submitted || _isSubmitting) {
+      _snack(
+        _submitted ? 'Attendance already submitted' : 'Upload in progress',
+      );
       return;
     }
 
@@ -122,7 +161,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: const Text('Take Photo'),
+              title: const Text('Take photo'),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -130,7 +169,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from Gallery'),
+              title: const Text('Choose from gallery'),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -142,7 +181,9 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     );
   }
 
-  /// 🔔 Confirmation dialog
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
   Future<void> _confirm({
     required String title,
     required String message,
@@ -165,26 +206,22 @@ class _LectureCardState extends ConsumerState<LectureCard> {
         ],
       ),
     );
-
     if (ok == true) onConfirm();
   }
 
   void _snack(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  // -------------------------------------------------------------------------
+  // Build
+  // -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    if (_checkingSubmission) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     final status = schedule.lectureStatus;
-    final canAct = status == LectureStatus.inProgress && !_submitted;
-    final loading = attendanceState.status == AttendanceStatus.inProgress;
+    final canAct =
+        status == LectureStatus.inProgress && !_submitted && !_isSubmitting;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -194,7 +231,6 @@ class _LectureCardState extends ConsumerState<LectureCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔹 HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -224,72 +260,67 @@ class _LectureCardState extends ConsumerState<LectureCard> {
 
             const Divider(height: 20),
 
-            /// 🔹 INFO
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _InfoItem(Icons.access_time, schedule.time),
-                _InfoItem(Icons.people, '${schedule.totalStudents} Students'),
+                _InfoItem(Icons.people, '${schedule.totalStudents} students'),
                 _InfoItem(Icons.location_on, schedule.room),
               ],
             ),
 
             const SizedBox(height: 14),
 
-            /// 🔹 PHOTO PREVIEW
             if (widget.mode == LectureCardMode.current &&
                 _photoPaths.isNotEmpty)
               _PhotoPreview(
                 paths: _photoPaths,
-                onRemove: (i) {
-                  setState(() {
-                    _photoPaths.removeAt(i);
-                  });
-                },
+                onRemove: canAct
+                    ? (i) => setState(() => _photoPaths.removeAt(i))
+                    : null,
               ),
 
-            /// 🔹 ACTIONS
             if (widget.mode == LectureCardMode.current)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ActionButton(
-                    label: 'Upload Photo',
+                    label: 'Upload photo',
                     enabled: canAct && _photoPaths.length < _maxPhotos,
                     onTap: _showImageSourcePicker,
                   ),
                   _ActionButton(
-                    label: 'Report Mass Bunk',
+                    label: 'Report mass bunk',
                     isDanger: true,
                     enabled: canAct,
                     onTap: () => _confirm(
-                      title: 'Report Mass Bunk',
-                      message: 'Are you sure you want to report mass bunk?',
+                      title: 'Report mass bunk',
+                      message: 'Are you sure?',
                       onConfirm: _submitAttendance,
                     ),
                   ),
                   _ActionButton(
-                    label: 'Mark All Present',
+                    label: 'Mark all present',
                     enabled: canAct,
                     onTap: () => _confirm(
-                      title: 'Mark All Present',
-                      message: 'Are you sure you want to mark all present?',
+                      title: 'Mark all present',
+                      message: 'Are you sure?',
                       onConfirm: _submitAttendance,
                     ),
                   ),
-                  if (_photoPaths.isNotEmpty)
+                  if (_photoPaths.isNotEmpty && !_submitted)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: ElevatedButton(
-                        onPressed: loading || _submitted
-                            ? null
-                            : () => _confirm(
-                                title: 'Submit Attendance',
+                        onPressed: canAct
+                            ? () => _confirm(
+                                title: 'Submit attendance',
                                 message:
                                     'Once submitted, attendance cannot be changed.',
                                 onConfirm: _submitAttendance,
-                              ),
-                        child: loading
+                              )
+                            : null,
+                        child: _isSubmitting
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -297,14 +328,14 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('Submit Attendance'),
+                            : const Text('Submit attendance'),
                       ),
                     ),
                   if (_submitted)
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        'Attendance Submitted',
+                        'Attendance submitted',
                         style: TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.w600,
@@ -320,11 +351,13 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   }
 }
 
-/// ---------------- SMALL WIDGETS ----------------
+// ---------------------------------------------------------------------------
+// Sub-widgets
+// ---------------------------------------------------------------------------
 
 class _PhotoPreview extends StatelessWidget {
   final List<String> paths;
-  final void Function(int index) onRemove;
+  final void Function(int index)? onRemove;
 
   const _PhotoPreview({required this.paths, required this.onRemove});
 
@@ -353,18 +386,23 @@ class _PhotoPreview extends StatelessWidget {
                     height: 80,
                     fit: BoxFit.cover,
                   ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: () => onRemove(i),
-                      child: const CircleAvatar(
-                        radius: 10,
-                        backgroundColor: Colors.black54,
-                        child: Icon(Icons.close, size: 14, color: Colors.white),
+                  if (onRemove != null)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () => onRemove!(i),
+                        child: const CircleAvatar(
+                          radius: 10,
+                          backgroundColor: Colors.black54,
+                          child: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -385,7 +423,7 @@ class _StatusText extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = {
       LectureStatus.pending: 'Pending',
-      LectureStatus.inProgress: 'In Progress',
+      LectureStatus.inProgress: 'In progress',
       LectureStatus.completed: 'Completed',
     }[status]!;
 

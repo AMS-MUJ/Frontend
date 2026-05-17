@@ -14,7 +14,7 @@ class StudentDashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authNotifierProvider.select((s) => s.auth?.user));
+    final user = ref.watch(authNotifierProvider.select((s) => s.auth));
 
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));

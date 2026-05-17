@@ -10,8 +10,8 @@ class Schedule {
   final int totalStudents;
   final DateTime startDateTime;
   final DateTime endDateTime;
+  final LectureStatus lectureStatus;
   final bool attendanceMarked;
-  final DateTime? attendanceMarkedAt;
 
   const Schedule({
     required this.lectureId,
@@ -24,19 +24,6 @@ class Schedule {
     required this.startDateTime,
     required this.endDateTime,
     required this.attendanceMarked,
-    required this.attendanceMarkedAt,
+    required this.lectureStatus,
   });
-
-  /// 🔹 Derived lecture status (single source of truth)
-  LectureStatus get lectureStatus {
-    final now = DateTime.now();
-
-    if (now.isBefore(startDateTime)) {
-      return LectureStatus.pending;
-    } else if (now.isAfter(endDateTime)) {
-      return LectureStatus.completed;
-    } else {
-      return LectureStatus.inProgress;
-    }
-  }
 }

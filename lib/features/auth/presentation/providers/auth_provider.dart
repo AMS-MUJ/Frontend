@@ -1,7 +1,3 @@
-import 'package:ams_try2/features/teacher/presentation/providers/attendance_provider.dart';
-import 'package:ams_try2/features/teacher/presentation/providers/filtered_schedule_provider.dart';
-import 'package:ams_try2/features/teacher/presentation/providers/home_filter_provider.dart';
-import 'package:ams_try2/features/teacher/providers/home_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/auth.dart';

@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'package:ams_try2/core/config/app_config.dart';
+
 import 'package:ams_try2/core/network/api_routes.dart';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../models/auth_model.dart';
+import 'package:ams_try2/features/auth/data/models/auth_model.dart';
+import 'package:dio/dio.dart';
 
 /// Thrown when the remote call fails or the backend returns a non-approved result.
 class ServerException implements Exception {
@@ -15,70 +14,46 @@ class ServerException implements Exception {
   String toString() => 'ServerException: $message';
 }
 
-/// Remote data source contract for authentication.
 abstract class AuthRemoteDataSource {
-  /// Sends login credentials to backend and returns an [AuthModel] when the
-  /// backend approves the login (status active/approved) and provides a token.
-  ///
-  /// Throws [ServerException] on HTTP errors, invalid response format, missing token,
-  /// or non-approved status.
   Future<AuthModel> login({required String email, required String password});
 }
 
-/// Implementation that uses `http.Client`.
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  final http.Client client;
+  final Dio dio;
 
-  AuthRemoteDataSourceImpl({required this.client});
+  AuthRemoteDataSourceImpl({required this.dio});
 
   @override
   Future<AuthModel> login({
     required String email,
     required String password,
   }) async {
-    final uri = Uri.parse('${AppConfig.baseUrl}${ApiRoutes.login}');
-    debugPrint('${AppConfig.baseUrl}${ApiRoutes.login}');
-
-    http.Response response;
     try {
-      response = await client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+      final response = await dio.post(
+        ApiRoutes.login,
+        data: {'email': email, 'password': password},
       );
-    } on http.ClientException catch (e) {
-      throw ServerException('Network error: ${e.message}');
+
+      final data = response.data is String
+          ? jsonDecode(response.data)
+          : response.data;
+
+      if (data == null ||
+          data['access_token'] == null ||
+          data['refresh_token'] == null ||
+          data['user'] == null) {
+        throw ServerException('Invalid response structure');
+      }
+
+      return AuthModel.fromJson(data);
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw ServerException(e.response?.data['message'] ?? 'Login failed');
+      } else {
+        throw ServerException('Network error');
+      }
     } catch (e) {
-      throw ServerException('Network error: ${e.toString()}');
+      throw ServerException(e.toString());
     }
-
-    // HTTP status check
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ServerException('Invalid Email or Password');
-    }
-
-    // Decode JSON FIRST
-    final decodedBody = jsonDecode(response.body) as Map<String, dynamic>;
-
-    // Validate success flag
-    if (decodedBody['success'] != true) {
-      final msg = decodedBody['data']?.toString() ?? 'Login failed';
-      throw ServerException(msg);
-    }
-
-    // Extract auth payload
-    if (decodedBody['message'] is! Map<String, dynamic>) {
-      throw ServerException('Invalid auth response structure');
-    }
-
-    final authJson = decodedBody['message'] as Map<String, dynamic>;
-
-    final authModel = AuthModel.fromJson(authJson);
-
-    if (authModel.accessToken.isEmpty) {
-      throw ServerException('Token missing in response');
-    }
-
-    return authModel;
   }
 }

@@ -1,11 +1,8 @@
-// lib/features/auth/data/datasources/auth_local_data_source.dart
-
 import 'dart:convert';
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/auth_model.dart';
 
-/// Thrown when reading/writing from secure storage fails.
 class CacheException implements Exception {
   final String message;
 
@@ -16,55 +13,96 @@ class CacheException implements Exception {
 }
 
 abstract class AuthLocalDataSource {
-  /// Cache the given AuthModel (token + user + status) securely.
   Future<void> cacheAuth(AuthModel auth);
 
-  /// Return cached AuthModel if present, otherwise null.
   Future<AuthModel?> getCachedAuth();
 
-  /// Clear cached auth (logout).
   Future<void> clear();
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
-  static const String _cacheKey = 'CACHED_AUTH';
+  static const _accessTokenKey = 'AUTH_ACCESS_TOKEN';
+  static const _refreshTokenKey = 'AUTH_REFRESH_TOKEN';
+  static const _tokenTypeKey = 'AUTH_TOKEN_TYPE';
+  static const _userKey = 'AUTH_USER';
+
   final FlutterSecureStorage secureStorage;
 
-  /// Pass a FlutterSecureStorage instance for easier testing.
   const AuthLocalDataSourceImpl({required this.secureStorage});
 
   @override
   Future<void> cacheAuth(AuthModel auth) async {
     try {
-      final jsonString = jsonEncode(auth.toJson());
-      await secureStorage.write(key: _cacheKey, value: jsonString);
-    } catch (e) {
-      throw CacheException(
-        'Failed to write auth to secure storage: ${e.toString()}',
+      // Store tokens
+      await secureStorage.write(key: _accessTokenKey, value: auth.accessToken);
+
+      await secureStorage.write(
+        key: _refreshTokenKey,
+        value: auth.refreshToken,
       );
+
+      await secureStorage.write(key: _tokenTypeKey, value: auth.tokenType);
+
+      final token = await secureStorage.read(key: _accessTokenKey);
+
+      debugPrint('FINAL TOKEN CHECK: $token');
+
+      // Store user
+      final userJson = jsonEncode({
+        'id': auth.id,
+        'name': auth.name,
+        'email': auth.email,
+        'role': auth.role,
+      });
+
+      await secureStorage.write(key: _userKey, value: userJson);
+    } catch (e) {
+      throw CacheException('Failed to cache auth: ${e.toString()}');
     }
   }
 
   @override
   Future<AuthModel?> getCachedAuth() async {
     try {
-      final raw = await secureStorage.read(key: _cacheKey);
-      if (raw == null || raw.isEmpty) return null;
+      final accessToken = await secureStorage.read(key: _accessTokenKey);
 
-      final Map<String, dynamic> map = jsonDecode(raw) as Map<String, dynamic>;
-      return AuthModel.fromJson(map);
+      final refreshToken = await secureStorage.read(key: _refreshTokenKey);
+
+      final tokenType = await secureStorage.read(key: _tokenTypeKey);
+
+      final userRaw = await secureStorage.read(key: _userKey);
+
+      if (accessToken == null || refreshToken == null || userRaw == null) {
+        return null;
+      }
+
+      final userMap = jsonDecode(userRaw) as Map<String, dynamic>;
+
+      return AuthModel(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        tokenType: tokenType ?? 'bearer',
+
+        id: userMap['id'] ?? '',
+        name: userMap['name'] ?? '',
+        email: userMap['email'] ?? '',
+        role: userMap['role'] ?? '',
+      );
     } catch (e) {
       await clear();
-      throw CacheException('Failed to read cached auth: ${e.toString()}');
+      return null;
     }
   }
 
   @override
   Future<void> clear() async {
     try {
-      await secureStorage.delete(key: _cacheKey);
+      await secureStorage.delete(key: _accessTokenKey);
+      await secureStorage.delete(key: _refreshTokenKey);
+      await secureStorage.delete(key: _tokenTypeKey);
+      await secureStorage.delete(key: _userKey);
     } catch (e) {
-      throw CacheException('Failed to clear cached auth: ${e.toString()}');
+      throw CacheException('Failed to clear auth: ${e.toString()}');
     }
   }
 }

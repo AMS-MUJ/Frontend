@@ -1,78 +1,44 @@
-import '../../domain/entities/schedule.dart';
+import 'package:ams_try2/features/teacher/domain/entities/schedule.dart';
 
-class ScheduleModel {
-  final String lectureId;
-  final String subject;
-  final String courseCode;
-  final String section;
-  final String time;
-  final String room;
-  final int totalStudents;
-
-  // 🔐 attendance status (from dashboard OR status API)
-  final bool attendanceMarked;
-  final DateTime? attendanceMarkedAt;
-
-  ScheduleModel({
-    required this.lectureId,
-    required this.subject,
-    required this.courseCode,
-    required this.section,
-    required this.time,
-    required this.room,
-    required this.totalStudents,
-    required this.attendanceMarked,
-    required this.attendanceMarkedAt,
+class ScheduleModel extends Schedule {
+  const ScheduleModel({
+    required super.lectureId,
+    required super.subject,
+    required super.courseCode,
+    required super.section,
+    required super.time,
+    required super.room,
+    required super.totalStudents,
+    required super.lectureStatus,
+    required super.attendanceMarked,
+    required super.startDateTime,
+    required super.endDateTime,
   });
 
   factory ScheduleModel.fromJson(Map<String, dynamic> json) {
     return ScheduleModel(
-      lectureId: json['lecture_id'] ?? '',
-      subject: json['subject'] ?? '',
-      courseCode: json['courseCode'] ?? '',
+      lectureId: json['schedule_id']?.toString() ?? '',
+      subject: json['subject_name'] ?? '',
+      courseCode: json['course_code'] ?? '',
       section: json['section_name'] ?? '',
       time: json['time'] ?? '',
       room: json['room'] ?? '',
-      totalStudents: json['totalStudents'] as int,
-
-      // 🔐 attendance lock (safe defaults)
-      attendanceMarked: json['attendanceMarked'] ?? false,
-      attendanceMarkedAt: json['attendanceMarkedAt'] != null
-          ? DateTime.parse(json['attendanceMarkedAt'])
-          : null,
+      totalStudents: json['total_students'] ?? 0,
+      lectureStatus: _parseStatus(json['status']),
+      attendanceMarked: json['is_marked'] ?? false,
+      startDateTime: null,
+      endDateTime: null,
     );
   }
 
-  Schedule toEntity() {
-    final parts = time.split('-');
-    final start = _parseTime(parts[0].trim());
-    final end = _parseTime(parts[1].trim());
-
-    return Schedule(
-      lectureId: lectureId,
-      subject: subject,
-      courseCode: courseCode,
-      section: section,
-      time: time,
-      room: room,
-      totalStudents: totalStudents,
-      startDateTime: start,
-      endDateTime: end,
-      attendanceMarked: attendanceMarked,
-      attendanceMarkedAt: attendanceMarkedAt,
-    );
-  }
-
-  DateTime _parseTime(String t) {
-    final now = DateTime.now();
-    final parts = t.split(':');
-
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-      int.parse(parts[0]),
-      int.parse(parts[1]),
-    );
+  static LectureStatus _parseStatus(String? status) {
+    switch (status) {
+      case 'in_progress':
+        return LectureStatus.inProgress;
+      case 'completed':
+        return LectureStatus.completed;
+      default:
+        return LectureStatus.pending;
+    }
   }
 }

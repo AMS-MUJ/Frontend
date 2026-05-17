@@ -5,8 +5,9 @@ import 'package:ams_try2/features/teacher/domain/repository/attendance_repositor
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final attendanceRepositoryProvider = Provider<AttendanceRepository>((ref) {
-  final dio = ref.read(dioProvider);
+  // watch instead of read so the repo rebuilds if dioProvider is ever
+  // invalidated (e.g. after token refresh or re-auth)
+  final dio = ref.watch(dioProvider);
   final remote = AttendanceRemoteDataSource(dio);
-
   return AttendanceRepositoryImpl(remote);
 });

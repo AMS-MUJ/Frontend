@@ -1,36 +1,33 @@
 import '../../domain/entities/user.dart';
 
-class UserModel extends User {
+class UserModel {
+  final String id;
+  final String email;
+  final String role;
+  final String? name;
+
   UserModel({
-    required super.id,
-    required super.email,
-    required super.role,
-    super.name,
-    super.designation,
+    required this.id,
+    required this.email,
+    required this.role,
+    this.name,
   });
 
-  factory UserModel.fromJson(
-    Map<String, dynamic> json, {
-    Map<String, dynamic>? profileJson,
-  }) {
+  factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'].toString(),
-      email: json['email'].toString(),
-      role: json['role'].toString(),
-
-      // Optional profile fields (if backend sends them)
-      name: profileJson?['name']?.toString(),
-      designation:
-          profileJson?['designation']?.toString() ??
-          profileJson?['Designation']?.toString(),
+      id: json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      role: json['role']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'email': email,
-    'role': role,
-    'name': name,
-    'designation': designation,
-  };
+  /// 🔥 Model → Entity conversion
+  User toEntity() {
+    return User(id: id, email: email, role: role, name: name);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'email': email, 'role': role, 'name': name};
+  }
 }

@@ -1,40 +1,47 @@
 import 'package:ams_try2/core/services/attendance_submission_manager.dart';
+import 'package:ams_try2/features/auth/data/datasource/auth_remote_data_source.dart';
+import 'package:ams_try2/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:ams_try2/features/auth/domain/usecases/login_usecase.dart';
+import 'package:ams_try2/features/auth/presentation/providers/auth_provider.dart';
 import 'package:ams_try2/features/splash/splash_page.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/theme/app_pallete.dart';
+import 'core/network/dio_client.dart';
 
 // Auth imports
-import 'features/auth/data/datasource/auth_local_data_source.dart';
-import 'features/auth/data/datasource/auth_remote_data_source.dart';
-import 'features/auth/data/repositories/auth_repository_impl.dart';
-import 'features/auth/domain/usecases/login_usecase.dart';
-import 'features/auth/presentation/providers/auth_provider.dart';
+import 'package:ams_try2/features/auth/data/datasource/auth_local_data_source.dart';
 
 // Shared storage
 import 'core/storage/secure_storage.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   try {
-    WidgetsFlutterBinding.ensureInitialized();
     await dotenv.load(fileName: '.env');
   } catch (e) {
     debugPrint('⚠️ dotenv load failed: ${e.toString()}');
   }
 
-  // Low-level dependencies
-  final client = http.Client();
+  /// 🔥 Initialize ONE Dio instance (shared globally)
+  final dioClient = DioClient(secureStorage: secureStorage);
+  final Dio dio = dioClient.dio;
 
-  // Data sources
-  final remote = AuthRemoteDataSourceImpl(client: client);
-  final local = AuthLocalDataSourceImpl(secureStorage: secureStorage);
+  /// 🔐 Local data source (uses same secure storage)
+  final authLocal = AuthLocalDataSourceImpl(secureStorage: secureStorage);
 
-  // Repository & use case
-  final repo = AuthRepositoryImpl(remote: remote, local: local);
-  final loginUseCase = LoginUseCase(repo);
+  /// 🌐 Remote data source
+  final authRemote = AuthRemoteDataSourceImpl(dio: dio);
+
+  /// 🧠 Repository
+  final authRepo = AuthRepositoryImpl(remote: authRemote, local: authLocal);
+
+  /// 🎯 Usecase
+  final loginUseCase = LoginUseCase(authRepo);
 
   runApp(
     ProviderScope(
@@ -43,7 +50,7 @@ void main() async {
           (ref) => AuthNotifier(
             ref: ref,
             loginUseCase: loginUseCase,
-            repository: repo,
+            repository: authRepo,
           ),
         ),
       ],
@@ -55,18 +62,15 @@ void main() async {
 /// ------------------------------------------------------------
 /// BOOTSTRAP
 /// ------------------------------------------------------------
-/// This ensures long-running services start BEFORE UI renders.
-/// Very important for background uploads.
 class AppBootstrap extends ConsumerWidget {
   const AppBootstrap({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🔴 Create the submission manager immediately
-    // Now it belongs to the ProviderContainer (app lifetime)
+    /// 🔴 Start background services immediately
     ref.read(attendanceSubmissionManagerProvider);
 
-    // Also load cached auth
+    /// 🔐 Load cached auth (token + user)
     ref.read(authNotifierProvider.notifier).loadCachedAuth();
 
     return const MyApp();

@@ -1,50 +1,61 @@
-import 'user_model.dart';
 import '../../domain/entities/auth.dart';
 
-class AuthModel extends Auth {
+class AuthModel {
+  final String accessToken;
+  final String refreshToken;
+  final String tokenType;
+
+  final String id;
+  final String name;
+  final String email;
+  final String role;
+
   AuthModel({
-    required super.accessToken,
-    required UserModel super.user,
-    required super.status,
+    required this.accessToken,
+    required this.refreshToken,
+    required this.tokenType,
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
   });
 
   factory AuthModel.fromJson(Map<String, dynamic> json) {
-    final token = json['token']?.toString() ?? '';
-
-    final userJson = json['user'] as Map<String, dynamic>;
-
-    // 🔹 Pick profile block dynamically
-    Map<String, dynamic>? profileJson;
-
-    for (final entry in json.entries) {
-      if (entry.value is Map<String, dynamic> &&
-          entry.key != 'user' &&
-          entry.key != 'token') {
-        profileJson = entry.value as Map<String, dynamic>;
-        break;
-      }
-    }
-    if (json.containsKey('teacher')) {
-      profileJson = json['teacher'];
-    } else if (json.containsKey('student')) {
-      profileJson = json['student'];
-    }
-
-    // 2️⃣ FALLBACK: read from user itself (cache case) ✅
-    profileJson ??= userJson;
-
-    final userModel = UserModel.fromJson(userJson, profileJson: profileJson);
+    final user = json['user'] as Map<String, dynamic>;
 
     return AuthModel(
-      accessToken: token,
-      user: userModel,
-      status: AuthStatus.active,
+      accessToken: json['access_token'] ?? '',
+      refreshToken: json['refresh_token'] ?? '',
+      tokenType: json['token_type'] ?? 'bearer',
+
+      id: user['id'] ?? '',
+      name: user['name'] ?? '',
+      email: user['email'] ?? '',
+      role: user['role'] ?? '',
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'token': accessToken,
-    'status': status.name,
-    'user': (user as UserModel).toJson(),
-  };
+  /// Model → Entity
+  Auth toEntity() {
+    return Auth(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      tokenType: tokenType,
+
+      id: id,
+      name: name,
+      email: email,
+      role: role,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'access_token': accessToken,
+      'refresh_token': refreshToken,
+      'token_type': tokenType,
+
+      'user': {'id': id, 'name': name, 'email': email, 'role': role},
+    };
+  }
 }
