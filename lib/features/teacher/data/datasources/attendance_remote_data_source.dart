@@ -23,6 +23,9 @@ class AttendanceRemoteDataSource {
     final response = await dio.post(
       '${ApiRoutes.markAttendance}/$lectureId',
       data: formData,
+
+      // IMPORTANT
+      options: Options(extra: {'isMultipart': true, 'imagePaths': imagePaths}),
     );
 
     if (response.statusCode != 200) {

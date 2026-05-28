@@ -15,9 +15,18 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
     final model = await remote.markAttendance(lectureId, imagePaths);
 
     return Attendance(
-      lectureId: model.lectureId,
-      fileName: model.fileName,
-      message: model.message,
+      sectionId: model.sectionId,
+
+      date: model.date,
+
+      markedBy: model.markedBy,
+
+      total: model.total,
+
+      present: model.present,
+
+      absent: model.absent,
+
       attendance: model.attendance.map((m) => m.toEntity()).toList(),
     );
   }

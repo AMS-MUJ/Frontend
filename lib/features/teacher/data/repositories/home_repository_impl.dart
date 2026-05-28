@@ -9,7 +9,6 @@ class HomeRepositoryImpl implements HomeRepository {
 
   @override
   Future<List<Schedule>> getTodaySchedule() async {
-    final models = await datasource.fetchSchedule();
-    return models.map((m) => m.toEntity()).toList();
+    return datasource.fetchSchedule();
   }
 }

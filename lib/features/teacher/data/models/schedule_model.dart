@@ -11,24 +11,26 @@ class ScheduleModel extends Schedule {
     required super.totalStudents,
     required super.lectureStatus,
     required super.attendanceMarked,
-    required super.startDateTime,
-    required super.endDateTime,
   });
 
   factory ScheduleModel.fromJson(Map<String, dynamic> json) {
     return ScheduleModel(
-      lectureId: json['schedule_id']?.toString() ?? '',
-      subject: json['subject_name'] ?? '',
+      lectureId: json['schedule_id'] ?? '',
+      subject: json['course_name'] ?? '',
       courseCode: json['course_code'] ?? '',
-      section: json['section_name'] ?? '',
-      time: json['time'] ?? '',
+      section: json['section'] ?? '',
+      time: _formatTime(json['start_time'], json['end_time']),
       room: json['room'] ?? '',
-      totalStudents: json['total_students'] ?? 0,
-      lectureStatus: _parseStatus(json['status']),
+      totalStudents: json['student_count'] ?? 0,
+      lectureStatus: _parseStatus(json['status']), // ← backend-provided
       attendanceMarked: json['is_marked'] ?? false,
-      startDateTime: null,
-      endDateTime: null,
     );
+  }
+
+  static String _formatTime(String? start, String? end) {
+    if (start == null && end == null) return '';
+    if (end == null) return start ?? '';
+    return '$start - $end';
   }
 
   static LectureStatus _parseStatus(String? status) {

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:collection';
-import 'package:flutter/foundation.dart';
+
+import 'package:ams_try2/core/utils/attendance_submission_store.dart';
 import 'package:ams_try2/core/utils/image_compressor.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ams_try2/features/attendance/data/attendance_file_service.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_files_provider.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_repository_provider.dart';
-import 'package:ams_try2/core/utils/attendance_submission_store.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ---------------------------------------------------------------------------
 // Result model — broadcast back to UI
@@ -29,11 +30,14 @@ class SubmissionResult {
 final attendanceSubmissionManagerProvider =
     Provider<AttendanceSubmissionManager>((ref) {
       final manager = AttendanceSubmissionManager(ref);
+
       final link = ref.keepAlive();
+
       ref.onDispose(() {
         manager.dispose();
         link.close();
       });
+
       return manager;
     });
 
@@ -57,19 +61,26 @@ class AttendanceSubmission {
 // ---------------------------------------------------------------------------
 class AttendanceSubmissionManager {
   static const int _maxAttempts = 3;
+
   static const Duration _retryDelay = Duration(seconds: 8);
 
   final Ref ref;
+
   final Queue<AttendanceSubmission> _queue = Queue();
+
   final Set<String> _activeLectures = {};
 
-  // Broadcast stream so multiple listeners (cards) can subscribe
+  bool _processing = false;
+
+  Completer<void>? _processingCompleter;
+
+  // ---------------------------------------------------------------------------
+  // Broadcast stream so multiple listeners can subscribe
+  // ---------------------------------------------------------------------------
   final StreamController<SubmissionResult> _resultController =
       StreamController<SubmissionResult>.broadcast();
 
   Stream<SubmissionResult> get results => _resultController.stream;
-
-  bool _processing = false;
 
   AttendanceSubmissionManager(this.ref) {
     debugPrint('🟢 Manager CREATED: ${identityHashCode(this)}');
@@ -80,59 +91,87 @@ class AttendanceSubmissionManager {
   }
 
   // ---------------------------------------------------------------------------
-  // Public API
+  // PUBLIC API
   // ---------------------------------------------------------------------------
-  void submitAttendance({
+  Future<void> submitAttendance({
     required String lectureId,
     required List<String> imagePaths,
-  }) {
+  }) async {
+    // Prevent duplicate submissions
     if (_activeLectures.contains(lectureId)) {
       debugPrint('⚠️ Duplicate ignored for $lectureId');
       return;
     }
 
     _activeLectures.add(lectureId);
+
     _queue.add(
       AttendanceSubmission(
         lectureId: lectureId,
-        imagePaths: List.unmodifiable(imagePaths), // defensive copy
+        imagePaths: List.unmodifiable(imagePaths),
       ),
     );
 
     debugPrint('➕ Enqueued: $lectureId');
-    _startProcessing();
+
+    await _startProcessing();
   }
 
   // ---------------------------------------------------------------------------
-  // Queue processing
+  // START PROCESSING
   // ---------------------------------------------------------------------------
-  void _startProcessing() {
-    if (_processing) return;
+  Future<void> _startProcessing() async {
+    // Already processing
+    if (_processing) {
+      return _processingCompleter?.future;
+    }
+
     _processing = true;
-    Future.microtask(_processQueue);
+
+    _processingCompleter = Completer<void>();
+
+    try {
+      await _processQueue();
+    } finally {
+      _processing = false;
+
+      _processingCompleter?.complete();
+
+      _processingCompleter = null;
+    }
   }
 
+  // ---------------------------------------------------------------------------
+  // PROCESS QUEUE
+  // ---------------------------------------------------------------------------
   Future<void> _processQueue() async {
     while (_queue.isNotEmpty) {
       final job = _queue.first;
 
       try {
         await _uploadAttendance(job);
+
         _queue.removeFirst();
-        // _activeLectures cleared inside _uploadAttendance's finally
+
+        debugPrint('✅ Removed ${job.lectureId} from queue');
       } catch (e) {
         job.attempts++;
+
         debugPrint(
           '❌ Upload failed for ${job.lectureId} '
           '(attempt ${job.attempts}/$_maxAttempts): $e',
         );
 
+        // -------------------------------------------------------------------
+        // MAX RETRIES EXCEEDED
+        // -------------------------------------------------------------------
         if (job.attempts >= _maxAttempts) {
-          // Give up on this job — remove from queue and active set
           _queue.removeFirst();
+
           _activeLectures.remove(job.lectureId);
 
           debugPrint('🚫 Max attempts reached for ${job.lectureId}, dropping');
+
           _resultController.add(
             SubmissionResult(
               lectureId: job.lectureId,
@@ -141,17 +180,22 @@ class AttendanceSubmissionManager {
             ),
           );
         } else {
-          // Keep job at front of queue, wait and retry
+          // -------------------------------------------------------------------
+          // RETRY
+          // -------------------------------------------------------------------
+          debugPrint(
+            '🔄 Retrying ${job.lectureId} in '
+            '${_retryDelay.inSeconds}s',
+          );
+
           await Future.delayed(_retryDelay);
         }
       }
     }
-
-    _processing = false;
   }
 
   // ---------------------------------------------------------------------------
-  // Upload logic
+  // UPLOAD ATTENDANCE
   // ---------------------------------------------------------------------------
   Future<void> _uploadAttendance(AttendanceSubmission job) async {
     debugPrint('🚀 Upload started for ${job.lectureId}');
@@ -159,27 +203,42 @@ class AttendanceSubmissionManager {
     final repo = ref.read(attendanceRepositoryProvider);
 
     try {
+      debugPrint('STEP 1');
+
       final compressedImages = await ImageCompressor.compressImages(
         job.imagePaths,
       );
 
+      debugPrint('STEP 2');
+
       final result = await repo.markAttendance(job.lectureId, compressedImages);
+
+      debugPrint('STEP 3');
 
       await AttendanceFileService.generateFiles(attendance: result);
 
-      // ✅ Persist submission ONLY after confirmed success
+      debugPrint('STEP 4');
+
       await AttendanceSubmissionStore.markSubmitted(job.lectureId);
+
+      debugPrint('STEP 5');
 
       ref.invalidate(attendanceFilesProvider);
 
-      debugPrint('✅ Upload completed for ${job.lectureId}');
+      debugPrint('STEP 6');
 
       _resultController.add(
         SubmissionResult(lectureId: job.lectureId, success: true),
       );
+
+      debugPrint('STEP 7');
+    } catch (e) {
+      debugPrint('❌ REAL FAILURE: $e');
+
+      rethrow;
     } finally {
-      // Always release the lock so the lecture can be resubmitted if needed
       _activeLectures.remove(job.lectureId);
+
       debugPrint('🧹 Cleared active lock for ${job.lectureId}');
     }
   }

@@ -1,13 +1,13 @@
-import 'package:ams_try2/core/network/api_client.dart';
 import 'package:ams_try2/core/network/api_routes.dart';
+import 'package:dio/dio.dart';
 
 class StudentRemoteDatasource {
-  final ApiClient apiClient;
+  final Dio dio;
 
-  StudentRemoteDatasource(this.apiClient);
+  StudentRemoteDatasource(this.dio);
 
   Future<Map<String, dynamic>> getStudentHome() async {
-    final response = await apiClient.get(ApiRoutes.studentDashboard);
+    final response = await dio.get(ApiRoutes.studentDashboard);
 
     return response.data;
   }

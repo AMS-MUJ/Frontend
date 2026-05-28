@@ -1,36 +1,70 @@
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+
 import 'package:excel/excel.dart';
+import 'package:path_provider/path_provider.dart';
+
 import '../../teacher/domain/entities/attendance.dart';
 
 class AttendanceFileService {
   static Future<void> generateFiles({required Attendance attendance}) async {
-    if (attendance.attendance.isEmpty) {
-      throw Exception('No attendance rows to write');
-    }
-
     final dir = await getApplicationDocumentsDirectory();
 
-    final fileName = '${attendance.lectureId}.xlsx';
+    // ---------------------------------------------
+    // FILE NAME
+    // ---------------------------------------------
+    final fileName = '${attendance.sectionId}_${attendance.date}.xlsx';
 
     final excelFile = File('${dir.path}/$fileName');
 
     final bytes = _buildExcel(attendance);
+
     await excelFile.writeAsBytes(bytes);
   }
 
   static List<int> _buildExcel(Attendance attendance) {
     final excel = Excel.createExcel();
+
     final sheet = excel['Sheet1'];
 
-    // Header
+    // ---------------------------------------------
+    // METADATA
+    // ---------------------------------------------
+    sheet.appendRow([
+      TextCellValue('Section'),
+      TextCellValue(attendance.sectionId),
+    ]);
+
+    sheet.appendRow([TextCellValue('Date'), TextCellValue(attendance.date)]);
+
+    sheet.appendRow([
+      TextCellValue('Marked By'),
+      TextCellValue(attendance.markedBy),
+    ]);
+
+    sheet.appendRow([
+      TextCellValue('Present'),
+      IntCellValue(attendance.present),
+    ]);
+
+    sheet.appendRow([TextCellValue('Absent'), IntCellValue(attendance.absent)]);
+
+    sheet.appendRow([TextCellValue('Total'), IntCellValue(attendance.total)]);
+
+    // Empty spacer row
+    sheet.appendRow([]);
+
+    // ---------------------------------------------
+    // TABLE HEADER
+    // ---------------------------------------------
     sheet.appendRow([
       TextCellValue('Reg No'),
       TextCellValue('Name'),
       TextCellValue('Status'),
     ]);
 
-    // Rows
+    // ---------------------------------------------
+    // ROWS
+    // ---------------------------------------------
     for (final row in attendance.attendance) {
       sheet.appendRow([
         TextCellValue(row.regNo),
@@ -40,6 +74,7 @@ class AttendanceFileService {
     }
 
     final bytes = excel.encode();
+
     if (bytes == null) {
       throw Exception('Failed to generate Excel');
     }

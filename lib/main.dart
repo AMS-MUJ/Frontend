@@ -1,3 +1,4 @@
+import 'package:ams_try2/core/navigation/navigation_service.dart';
 import 'package:ams_try2/core/services/attendance_submission_manager.dart';
 import 'package:ams_try2/features/auth/data/datasource/auth_remote_data_source.dart';
 import 'package:ams_try2/features/auth/data/repositories/auth_repository_impl.dart';
@@ -86,6 +87,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NavigationService.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'AMS',
       theme: appTheme,

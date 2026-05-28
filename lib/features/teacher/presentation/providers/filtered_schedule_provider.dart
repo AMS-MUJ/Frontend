@@ -12,22 +12,22 @@ final filteredScheduleProvider = Provider<AsyncValue<List<Schedule>>>((ref) {
     loading: () => const AsyncLoading(),
     error: (e, st) => AsyncError(e, st),
     data: (schedules) {
-      final now = DateTime.now();
       List<Schedule> filtered;
 
       switch (filter) {
         case HomeFilter.all:
           filtered = schedules;
           break;
+
         case HomeFilter.current:
-          filtered = schedules.where((s) {
-            return now.isAfter(s.startDateTime) && now.isBefore(s.endDateTime);
-          }).toList();
-          break;
-        case HomeFilter.attendance:
+          // Uses backend-provided lectureStatus — no device clock needed
           filtered = schedules
-              .where((s) => s.attendanceMarked == true)
+              .where((s) => s.lectureStatus == LectureStatus.inProgress)
               .toList();
+          break;
+
+        case HomeFilter.attendance:
+          filtered = schedules.where((s) => s.attendanceMarked).toList();
           break;
       }
 

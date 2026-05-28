@@ -1,5 +1,3 @@
-enum LectureStatus { pending, inProgress, completed }
-
 class Schedule {
   final String lectureId;
   final String subject;
@@ -8,8 +6,6 @@ class Schedule {
   final String time;
   final String room;
   final int totalStudents;
-  final DateTime startDateTime;
-  final DateTime endDateTime;
   final LectureStatus lectureStatus;
   final bool attendanceMarked;
 
@@ -21,9 +17,9 @@ class Schedule {
     required this.time,
     required this.room,
     required this.totalStudents,
-    required this.startDateTime,
-    required this.endDateTime,
-    required this.attendanceMarked,
     required this.lectureStatus,
+    required this.attendanceMarked,
   });
 }
+
+enum LectureStatus { pending, inProgress, completed }

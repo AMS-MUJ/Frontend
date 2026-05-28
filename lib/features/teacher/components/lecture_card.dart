@@ -75,18 +75,14 @@ class _LectureCardState extends ConsumerState<LectureCard> {
           if (!mounted) return;
 
           if (result.success) {
+            if (!mounted) return;
+
             setState(() {
               _isSubmitting = false;
               _photoPaths.clear();
             });
-            // Invalidate schedule — backend now returns is_marked: true
-            // which flows into schedule.attendanceMarked and rebuilds the UI
-            ref.invalidate(filteredScheduleProvider);
+
             _snack('Attendance submitted successfully');
-          } else {
-            setState(() => _isSubmitting = false);
-            ref.read(attendanceProvider(myLectureId).notifier).reset();
-            _snack('Upload failed: ${result.error ?? 'unknown error'}');
           }
         });
   }
@@ -96,7 +92,6 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   // -------------------------------------------------------------------------
   Future<void> _submitAttendance() async {
     if (_isSubmitting || _submitted) return;
-
     if (schedule.lectureId.isEmpty) {
       _snack('Invalid lecture ID');
       return;

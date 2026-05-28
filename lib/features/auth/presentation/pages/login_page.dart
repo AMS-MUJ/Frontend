@@ -40,7 +40,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       }
 
       // Navigate on successful login
-      if (next.auth != null && previous?.auth == null) {
+      if (next.auth != null) {
         final role = next.auth!.role.toLowerCase();
         if (role == 'teacher') {
           Navigator.pushReplacement(

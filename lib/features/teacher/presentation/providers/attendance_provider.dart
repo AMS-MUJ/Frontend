@@ -32,9 +32,10 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
     state = state.copyWith(status: AttendanceStatus.inProgress, error: null);
 
     try {
-      ref
+      await ref
           .read(attendanceSubmissionManagerProvider)
           .submitAttendance(lectureId: lectureId, imagePaths: imagePaths);
+
       state = state.copyWith(status: AttendanceStatus.success);
     } catch (e) {
       state = state.copyWith(
