@@ -203,35 +203,21 @@ class AttendanceSubmissionManager {
     final repo = ref.read(attendanceRepositoryProvider);
 
     try {
-      debugPrint('STEP 1');
-
       final compressedImages = await ImageCompressor.compressImages(
         job.imagePaths,
       );
 
-      debugPrint('STEP 2');
-
       final result = await repo.markAttendance(job.lectureId, compressedImages);
-
-      debugPrint('STEP 3');
 
       await AttendanceFileService.generateFiles(attendance: result);
 
-      debugPrint('STEP 4');
-
       await AttendanceSubmissionStore.markSubmitted(job.lectureId);
 
-      debugPrint('STEP 5');
-
       ref.invalidate(attendanceFilesProvider);
-
-      debugPrint('STEP 6');
 
       _resultController.add(
         SubmissionResult(lectureId: job.lectureId, success: true),
       );
-
-      debugPrint('STEP 7');
     } catch (e) {
       debugPrint('❌ REAL FAILURE: $e');
 

@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:ams_try2/core/services/attendance_submission_manager.dart';
 import 'package:ams_try2/features/teacher/domain/entities/schedule.dart';
 import 'package:ams_try2/features/teacher/presentation/lecture_card_mode.dart';
 import 'package:ams_try2/features/teacher/presentation/providers/attendance_provider.dart';
-import 'package:ams_try2/features/teacher/presentation/providers/filtered_schedule_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -21,23 +21,29 @@ class LectureCard extends ConsumerStatefulWidget {
 
 class _LectureCardState extends ConsumerState<LectureCard> {
   static const int _maxPhotos = 6;
+
   final ImagePicker _picker = ImagePicker();
+
   final List<String> _photoPaths = [];
 
-  // Only local UI state — submission truth comes from schedule.attendanceMarked
   bool _isSubmitting = false;
 
+  bool _submitted = false;
+
   StreamSubscription<SubmissionResult>? _resultSub;
+
   bool _subscribed = false;
 
   Schedule get schedule => widget.schedule;
 
-  // Derived directly from backend — no local cache needed
-  bool get _submitted => schedule.attendanceMarked;
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // Sync local submitted state
+    // with backend state initially
+    _submitted = schedule.attendanceMarked;
+
     if (!_subscribed) {
       _subscribed = true;
       _listenToResults();
@@ -50,18 +56,14 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     super.dispose();
   }
 
-  // -------------------------------------------------------------------------
-  // Result stream — only drives upload spinner and error snacks.
-  // Actual "submitted" state comes from backend via schedule refresh.
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // LISTEN TO UPLOAD RESULTS
+  // ---------------------------------------------------------
   void _listenToResults() {
     _resultSub?.cancel();
 
     if (schedule.lectureId.isEmpty) {
-      debugPrint(
-        '⚠️ LectureCard: empty lectureId for ${schedule.subject}, '
-        'skipping result subscription',
-      );
+      debugPrint('⚠️ Empty lectureId for ${schedule.subject}');
       return;
     }
 
@@ -75,23 +77,31 @@ class _LectureCardState extends ConsumerState<LectureCard> {
           if (!mounted) return;
 
           if (result.success) {
-            if (!mounted) return;
-
             setState(() {
               _isSubmitting = false;
+
+              _submitted = true;
+
               _photoPaths.clear();
             });
 
             _snack('Attendance submitted successfully');
+          } else {
+            setState(() {
+              _isSubmitting = false;
+            });
+
+            _snack('Attendance upload failed');
           }
         });
   }
 
-  // -------------------------------------------------------------------------
-  // Submit
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // SUBMIT ATTENDANCE
+  // ---------------------------------------------------------
   Future<void> _submitAttendance() async {
     if (_isSubmitting || _submitted) return;
+
     if (schedule.lectureId.isEmpty) {
       _snack('Invalid lecture ID');
       return;
@@ -102,7 +112,9 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+    });
 
     try {
       await ref
@@ -112,14 +124,18 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       _snack('Attendance upload started');
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isSubmitting = false);
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
       _snack('Failed to start upload: $e');
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Photo picking
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // PICK IMAGE
+  // ---------------------------------------------------------
   Future<void> _pickImage(ImageSource source) async {
     if (_photoPaths.length >= _maxPhotos) {
       _snack('Maximum $_maxPhotos photos allowed');
@@ -132,9 +148,15 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     );
 
     if (image == null || !mounted) return;
-    setState(() => _photoPaths.add(image.path));
+
+    setState(() {
+      _photoPaths.add(image.path);
+    });
   }
 
+  // ---------------------------------------------------------
+  // SHOW PICKER
+  // ---------------------------------------------------------
   Future<void> _showImageSourcePicker() async {
     if (schedule.lectureStatus != LectureStatus.inProgress) {
       _snack('Lecture is not in progress');
@@ -159,6 +181,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
               title: const Text('Take photo'),
               onTap: () {
                 Navigator.pop(context);
+
                 _pickImage(ImageSource.camera);
               },
             ),
@@ -167,6 +190,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
               title: const Text('Choose from gallery'),
               onTap: () {
                 Navigator.pop(context);
+
                 _pickImage(ImageSource.gallery);
               },
             ),
@@ -176,9 +200,9 @@ class _LectureCardState extends ConsumerState<LectureCard> {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Helpers
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // CONFIRM DIALOG
+  // ---------------------------------------------------------
   Future<void> _confirm({
     required String title,
     required String message,
@@ -201,20 +225,28 @@ class _LectureCardState extends ConsumerState<LectureCard> {
         ],
       ),
     );
-    if (ok == true) onConfirm();
+
+    if (ok == true) {
+      onConfirm();
+    }
   }
 
+  // ---------------------------------------------------------
+  // SNACKBAR
+  // ---------------------------------------------------------
   void _snack(String msg) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // -------------------------------------------------------------------------
-  // Build
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // BUILD
+  // ---------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final status = schedule.lectureStatus;
+
     final canAct =
         status == LectureStatus.inProgress && !_submitted && !_isSubmitting;
 
@@ -239,15 +271,18 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+
                 _StatusText(status),
               ],
             ),
 
             const SizedBox(height: 4),
+
             Text(
               schedule.courseCode,
               style: const TextStyle(color: Colors.grey),
             ),
+
             Text(
               'Section: ${schedule.section}',
               style: const TextStyle(color: Colors.grey),
@@ -259,7 +294,9 @@ class _LectureCardState extends ConsumerState<LectureCard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _InfoItem(Icons.access_time, schedule.time),
+
                 _InfoItem(Icons.people, '${schedule.totalStudents} students'),
+
                 _InfoItem(Icons.location_on, schedule.room),
               ],
             ),
@@ -284,6 +321,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                     enabled: canAct && _photoPaths.length < _maxPhotos,
                     onTap: _showImageSourcePicker,
                   ),
+
                   _ActionButton(
                     label: 'Report mass bunk',
                     isDanger: true,
@@ -294,6 +332,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                       onConfirm: _submitAttendance,
                     ),
                   ),
+
                   _ActionButton(
                     label: 'Mark all present',
                     enabled: canAct,
@@ -303,6 +342,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                       onConfirm: _submitAttendance,
                     ),
                   ),
+
                   if (_photoPaths.isNotEmpty && !_submitted)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
@@ -326,11 +366,12 @@ class _LectureCardState extends ConsumerState<LectureCard> {
                             : const Text('Submit attendance'),
                       ),
                     ),
+
                   if (_submitted)
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        'Attendance submitted',
+                        '✅ Attendance submitted',
                         style: TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.w600,
@@ -346,12 +387,13 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sub-widgets
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------
+// PHOTO PREVIEW
+// -----------------------------------------------------------
 
 class _PhotoPreview extends StatelessWidget {
   final List<String> paths;
+
   final void Function(int index)? onRemove;
 
   const _PhotoPreview({required this.paths, required this.onRemove});
@@ -365,7 +407,9 @@ class _PhotoPreview extends StatelessWidget {
           'Photos (${paths.length}/6)',
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
+
         const SizedBox(height: 6),
+
         SizedBox(
           height: 80,
           child: ListView.builder(
@@ -381,6 +425,7 @@ class _PhotoPreview extends StatelessWidget {
                     height: 80,
                     fit: BoxFit.cover,
                   ),
+
                   if (onRemove != null)
                     Positioned(
                       top: 0,
@@ -403,11 +448,16 @@ class _PhotoPreview extends StatelessWidget {
             ),
           ),
         ),
+
         const SizedBox(height: 10),
       ],
     );
   }
 }
+
+// -----------------------------------------------------------
+// STATUS TEXT
+// -----------------------------------------------------------
 
 class _StatusText extends StatelessWidget {
   final LectureStatus status;
@@ -433,8 +483,13 @@ class _StatusText extends StatelessWidget {
   }
 }
 
+// -----------------------------------------------------------
+// INFO ITEM
+// -----------------------------------------------------------
+
 class _InfoItem extends StatelessWidget {
   final IconData icon;
+
   final String label;
 
   const _InfoItem(this.icon, this.label);
@@ -444,17 +499,26 @@ class _InfoItem extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 22, color: Colors.grey),
+
         const SizedBox(width: 4),
+
         Text(label, style: const TextStyle(fontSize: 14)),
       ],
     );
   }
 }
 
+// -----------------------------------------------------------
+// ACTION BUTTON
+// -----------------------------------------------------------
+
 class _ActionButton extends StatelessWidget {
   final String label;
+
   final VoidCallback onTap;
+
   final bool isDanger;
+
   final bool enabled;
 
   const _ActionButton({
