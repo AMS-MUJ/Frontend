@@ -4,9 +4,9 @@ import 'package:ams_try2/features/create_class/data/models/subject_model.dart';
 import 'package:dio/dio.dart';
 
 abstract class CreateClassRemoteDataSource {
-  Future<List<SubjectModel>> getSubjects(int year, String branch);
+  Future<List<SubjectModel>> getSubjects(int year);
 
-  Future<List<SectionModel>> getSections(String subject, String branch);
+  Future<List<SectionModel>> getSections(String subjectId);
 
   Future<void> createPermanentClass(Map<String, dynamic> payload);
 
@@ -19,27 +19,22 @@ class CreateClassRemoteDSImpl implements CreateClassRemoteDataSource {
   CreateClassRemoteDSImpl(this.dio);
 
   @override
-  Future<List<SubjectModel>> getSubjects(int year, String branch) async {
+  Future<List<SubjectModel>> getSubjects(int year) async {
     final response = await dio.get(
       ApiRoutes.getSubjects,
-      queryParameters: {'year': year, 'branch': branch},
+      queryParameters: {'year': year},
     );
-    final list = response.data['courses'] as List;
-
+    final list = response.data['subjects'] as List;
     return list.map((e) => SubjectModel.fromJson(e)).toList();
   }
 
   @override
-  Future<List<SectionModel>> getSections(
-    String courseName,
-    String branch,
-  ) async {
+  Future<List<SectionModel>> getSections(String subjectId) async {
     final response = await dio.get(
       ApiRoutes.getSections,
-      queryParameters: {'courseName': courseName, 'branch': branch},
+      queryParameters: {'subject_id': subjectId},
     );
-
-    return (response.data['data'] as List)
+    return (response.data['sections'] as List)
         .map((e) => SectionModel.fromJson(e))
         .toList();
   }

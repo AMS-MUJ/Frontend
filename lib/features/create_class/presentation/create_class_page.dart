@@ -18,13 +18,14 @@ class CreateClassPage extends ConsumerStatefulWidget {
 
 class _CreateClassPageState extends ConsumerState<CreateClassPage> {
   int? selectedYear;
-  String? selectedBranch;
-  String? selectedSubject;
-  String? selectedSection;
+  String? selectedSubjectId;
+  String? selectedSubjectName;
+  String? selectedSectionId;
+  String? selectedSectionName;
+  String? selectedStartTime;
 
   String classType = 'PERMANENT';
 
-  final branches = ['CSE', 'AIML', 'IOT', 'Data Science'];
   final days = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
   final List<String> presetTimes = [
     '09:00',
@@ -41,25 +42,32 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
   ];
 
   final Set<String> selectedTimes = {};
-
   final Set<String> selectedDays = {};
   DateTime? selectedDate;
-  TimeOfDay? selectedTime;
+
+  static const _dayMap = {
+    'MON': 0,
+    'TUE': 1,
+    'WED': 2,
+    'THU': 3,
+    'FRI': 4,
+    'SAT': 5,
+    'SUN': 6,
+  };
+
+  String _calcEndTime(String startTime) {
+    final parts = startTime.split(':');
+    final startMinutes = int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    final endMinutes = startMinutes + 50;
+    final h = (endMinutes ~/ 60).toString().padLeft(2, '0');
+    final m = (endMinutes % 60).toString().padLeft(2, '0');
+    return '$h:$m';
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(createClassNotifierProvider);
     final notifier = ref.read(createClassNotifierProvider.notifier);
-    ref.listen(createClassNotifierProvider, (previous, next) {
-      if (previous?.submitting == true && next.submitting == false) {
-        if (next.error != null) {
-          _snack('Class not created. Please try again.');
-        } else {
-          Navigator.pop(context);
-          _snack('Class created successfully', isError: false);
-        }
-      }
-    });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
@@ -77,7 +85,7 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
                   subLabel: 'Select Year',
                   icon: Icons.event_outlined,
                   value: selectedYear,
-                  items: [1, 2, 3, 4],
+                  items: const [1, 2, 3, 4],
                   labelBuilder: (year) {
                     switch (year) {
                       case 1:
@@ -92,44 +100,54 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
                         return '$year Year';
                     }
                   },
-                  onChanged: (v) => setState(() => selectedYear = v),
-                ),
-
-                Dropdown<String>(
-                  label: 'Branch',
-                  icon: Icons.layers_outlined,
-                  value: selectedBranch,
-                  items: branches,
                   onChanged: (v) {
-                    setState(() => selectedBranch = v);
-                    if (v != null && selectedYear != null) {
-                      notifier.fetchSubjects(selectedYear!, v);
-                    }
+                    setState(() {
+                      selectedYear = v;
+                      selectedSubjectId = null;
+                      selectedSubjectName = null;
+                      selectedSectionId = null;
+                      selectedSectionName = null;
+                    });
+                    if (v != null) notifier.fetchSubjects(v);
                   },
                 ),
+
                 Dropdown<String>(
                   label: 'Subject',
                   icon: Icons.menu_book_outlined,
-                  value: selectedSubject,
+                  value: selectedSubjectName,
                   enabled: !state.loadingSubjects && state.subjects.isNotEmpty,
                   items: state.subjects.map((s) => s.name).toList(),
-
-                  onChanged: (v) {
-                    setState(() => selectedSubject = v);
-                    if (v != null && selectedBranch != null) {
-                      notifier.fetchSections(v, selectedBranch!);
-                    }
+                  onChanged: (name) {
+                    if (name == null) return;
+                    final subject = state.subjects.firstWhere(
+                      (s) => s.name == name,
+                    );
+                    setState(() {
+                      selectedSubjectName = name;
+                      selectedSubjectId = subject.id;
+                      selectedSectionId = null;
+                      selectedSectionName = null;
+                    });
+                    notifier.fetchSections(subject.id);
                   },
                 ),
 
                 Dropdown<String>(
                   label: 'Section',
                   icon: Icons.groups_outlined,
-                  value: selectedSection,
+                  value: selectedSectionName,
                   enabled: !state.loadingSections && state.sections.isNotEmpty,
                   items: state.sections.map((s) => s.name).toList(),
-                  onChanged: (v) {
-                    setState(() => selectedSection = v);
+                  onChanged: (name) {
+                    if (name == null) return;
+                    final section = state.sections.firstWhere(
+                      (s) => s.name == name,
+                    );
+                    setState(() {
+                      selectedSectionName = name;
+                      selectedSectionId = section.id;
+                    });
                   },
                 ),
               ],
@@ -231,44 +249,30 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
                 classType = value.first;
                 selectedDays.clear();
                 selectedDate = null;
-                selectedTime = null;
+                selectedTimes.clear();
+                selectedStartTime = null;
               });
             },
             expandedInsets: const EdgeInsets.symmetric(horizontal: 8),
             style: ButtonStyle(
-              // 🔹 background per segment
               backgroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return const Color(0xFF6C63FF); // purple-blue like image
+                  return const Color(0xFF6C63FF);
                 }
                 return Colors.transparent;
               }),
-
-              // 🔹 text + icon color
               foregroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
-                }
+                if (states.contains(WidgetState.selected)) return Colors.white;
                 return Colors.grey.shade700;
               }),
-
-              // 🔹 icon color explicitly
               iconColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
-                }
+                if (states.contains(WidgetState.selected)) return Colors.white;
                 return Colors.grey.shade600;
               }),
-
-              // 🔹 pill shape
               shape: WidgetStateProperty.all(
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-
-              // 🔹 remove borders
               side: WidgetStateProperty.all(BorderSide.none),
-
-              // 🔹 internal padding
               padding: WidgetStateProperty.all(
                 const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -288,46 +292,90 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
     );
   }
 
-  Widget _daySelector() => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    children: days.map((d) {
-      final isSelected = selectedDays.contains(d);
+  Widget _daySelector() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: days.map((d) {
+          final isSelected = selectedDays.contains(d);
+          return FilterChip(
+            label: Text(
+              d,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade800,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            selected: isSelected,
+            onSelected: (v) => setState(
+              () => v ? selectedDays.add(d) : selectedDays.remove(d),
+            ),
+            selectedColor: const Color(0xFF6C63FF),
+            backgroundColor: Colors.grey.shade200,
+            side: BorderSide.none,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          );
+        }).toList(),
+      ),
 
-      return FilterChip(
-        label: Text(
-          d,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey.shade800,
-            fontWeight: FontWeight.w500,
-          ),
+      const SizedBox(height: 16),
+
+      const Text(
+        'Start Time',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey,
         ),
-        selected: isSelected,
-        onSelected: (v) =>
-            setState(() => v ? selectedDays.add(d) : selectedDays.remove(d)),
+      ),
+      const SizedBox(height: 8),
 
-        // 🔹 COLORS
-        selectedColor: const Color(0xFF6C63FF),
-        // blue when selected
-        backgroundColor: Colors.grey.shade200,
-        // light grey when unselected
-        // 🔹 REMOVE BORDER
-        side: BorderSide.none,
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: presetTimes.map((time) {
+          final isSelected = selectedStartTime == time;
+          return FilterChip(
+            label: Text(
+              time,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade800,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            selected: isSelected,
+            onSelected: (v) =>
+                setState(() => selectedStartTime = v ? time : null),
+            selectedColor: const Color(0xFF6C63FF),
+            backgroundColor: Colors.grey.shade200,
+            side: BorderSide.none,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          );
+        }).toList(),
+      ),
 
-        // 🔹 SHAPE (soft pill)
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-
-        // 🔹 Padding for better touch & look
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      );
-    }).toList(),
+      if (selectedStartTime != null) ...[
+        const SizedBox(height: 12),
+        Text(
+          'End time: ${_calcEndTime(selectedStartTime!)}',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        ),
+      ],
+    ],
   );
 
   Widget _dateTimePicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 📅 Date selector (unchanged, card style)
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -349,9 +397,7 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
                 lastDate: DateTime.now().add(const Duration(days: 365)),
                 initialDate: DateTime.now(),
               );
-              if (d != null) {
-                setState(() => selectedDate = d);
-              }
+              if (d != null) setState(() => selectedDate = d);
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -380,7 +426,6 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
 
         const SizedBox(height: 16),
 
-        // ⏰ Preset time slots
         const Text(
           'Select Time Slots',
           style: TextStyle(
@@ -397,7 +442,6 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
           runSpacing: 8,
           children: presetTimes.map((time) {
             final isSelected = selectedTimes.contains(time);
-
             return FilterChip(
               label: Text(
                 time,
@@ -407,13 +451,9 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
                 ),
               ),
               selected: isSelected,
-              onSelected: (v) {
-                setState(() {
-                  v ? selectedTimes.add(time) : selectedTimes.remove(time);
-                });
-              },
-
-              // 🎨 Styling
+              onSelected: (v) => setState(
+                () => v ? selectedTimes.add(time) : selectedTimes.remove(time),
+              ),
               selectedColor: const Color(0xFF6C63FF),
               backgroundColor: Colors.grey.shade200,
               side: BorderSide.none,
@@ -430,48 +470,105 @@ class _CreateClassPageState extends ConsumerState<CreateClassPage> {
 
   // ---------- SUBMIT ----------
 
-  void _submit() {
+  Future<void> _submit() async {
     if (selectedYear == null ||
-        selectedBranch == null ||
-        selectedSubject == null ||
-        selectedSection == null) {
+        selectedSubjectId == null ||
+        selectedSectionId == null) {
       _snack('Please fill all academic details');
       return;
     }
 
-    final bool isPermanent = classType == 'PERMANENT';
+    final notifier = ref.read(createClassNotifierProvider.notifier);
 
-    if (isPermanent && selectedDays.isEmpty) {
-      _snack('Please select at least one day');
-      return;
-    }
+    try {
+      // =========================
+      // PERMANENT CLASS
+      // =========================
+      if (classType == 'PERMANENT') {
+        if (selectedDays.isEmpty) {
+          _snack('Please select at least one day');
+          return;
+        }
 
-    if (!isPermanent) {
+        if (selectedStartTime == null) {
+          _snack('Please select a start time');
+          return;
+        }
+
+        final endTime = _calcEndTime(selectedStartTime!);
+
+        for (final day in selectedDays) {
+          await notifier.submitClass(
+            isPermanent: true,
+            payload: {
+              'section_id': selectedSectionId,
+              'day_of_week': _dayMap[day],
+              'start_time': selectedStartTime,
+              'end_time': endTime,
+            },
+          );
+
+          final currentState = ref.read(createClassNotifierProvider);
+
+          if (currentState.error != null) {
+            _snack(currentState.error!);
+            return;
+          }
+        }
+
+        if (mounted) {
+          _snack('Permanent class created successfully', isError: false);
+
+          Navigator.pop(context);
+        }
+
+        return;
+      }
+
+      // =========================
+      // TEMPORARY / EXTRA CLASS
+      // =========================
+
       if (selectedDate == null) {
         _snack('Please select a date');
         return;
       }
+
       if (selectedTimes.isEmpty) {
         _snack('Please select at least one time slot');
         return;
       }
+
+      for (final time in selectedTimes) {
+        final endTime = _calcEndTime(time);
+
+        await notifier.submitClass(
+          isPermanent: false,
+          payload: {
+            'section_id': selectedSectionId,
+            'date': selectedDate!.toIso8601String().split('T')[0],
+            'start_time': time,
+            'end_time': endTime,
+            'is_substitute': false,
+          },
+        );
+
+        final currentState = ref.read(createClassNotifierProvider);
+
+        if (currentState.error != null) {
+          _snack(currentState.error!);
+          return;
+        }
+      }
+
+      if (mounted) {
+        _snack('Extra class created successfully', isError: false);
+
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      _snack(e.toString());
     }
-
-    final payload = {
-      'year': selectedYear,
-      'branch': selectedBranch,
-      'courseName': selectedSubject,
-      'section': selectedSection,
-      if (isPermanent) 'days': selectedDays.toList(),
-      if (!isPermanent) ...{
-        'date': selectedDate!.toIso8601String().split('T')[0],
-        'timeSlots': selectedTimes.toList(),
-      },
-    };
-
-    ref
-        .read(createClassNotifierProvider.notifier)
-        .submitClass(isPermanent: isPermanent, payload: payload);
   }
 
   void _snack(String msg, {bool isError = true}) {

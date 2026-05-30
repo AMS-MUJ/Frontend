@@ -6,7 +6,7 @@ class GetSections {
 
   GetSections(this.repo);
 
-  Future<List<Section>> call(String courseName, String branch) {
-    return repo.getSections(courseName, branch);
+  Future<List<Section>> call(String subjectId) {
+    return repo.getSections(subjectId);
   }
 }

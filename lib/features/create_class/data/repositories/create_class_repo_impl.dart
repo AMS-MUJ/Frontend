@@ -9,15 +9,15 @@ class CreateClassRepositoryImpl implements CreateClassRepository {
   CreateClassRepositoryImpl(this.remote);
 
   @override
-  Future<List<Subject>> getSubjects(int year, String branch) async {
-    final models = await remote.getSubjects(year, branch);
-    return models.map((m) => Subject(name: m.name)).toList();
+  Future<List<Subject>> getSubjects(int year) async {
+    final models = await remote.getSubjects(year);
+    return models.map((m) => Subject(id: m.id, name: m.name)).toList();
   }
 
   @override
-  Future<List<Section>> getSections(String courseName, String branch) async {
-    final models = await remote.getSections(courseName, branch);
-    return models.map((m) => Section(name: m.name)).toList();
+  Future<List<Section>> getSections(String subjectId) async {
+    final models = await remote.getSections(subjectId);
+    return models.map((m) => Section(id: m.id, name: m.name)).toList();
   }
 
   @override

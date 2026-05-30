@@ -1,5 +1,6 @@
 class Section {
+  final String id;
   final String name;
 
-  const Section({required this.name});
+  Section({required this.id, required this.name});
 }

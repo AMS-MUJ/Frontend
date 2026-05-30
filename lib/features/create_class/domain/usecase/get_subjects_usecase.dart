@@ -6,7 +6,7 @@ class GetSubjects {
 
   GetSubjects(this.repo);
 
-  Future<List<Subject>> call(int year, String branch) {
-    return repo.getSubjects(year, branch);
+  Future<List<Subject>> call(int year) {
+    return repo.getSubjects(year);
   }
 }
