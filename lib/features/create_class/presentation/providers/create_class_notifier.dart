@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:ams_try2/features/create_class/domain/usecase/create_class_usecase.dart';
 import 'package:ams_try2/features/create_class/domain/usecase/get_sections_usecase.dart';
 import 'package:ams_try2/features/create_class/domain/usecase/get_subjects_usecase.dart';
@@ -60,8 +61,8 @@ class CreateClassNotifier extends StateNotifier<CreateClassState> {
 
       state = state.copyWith(submitting: false, error: null);
     } on DioException catch (e) {
-      print('STATUS CODE: ${e.response?.statusCode}');
-      print('RESPONSE DATA: ${e.response?.data}');
+      debugPrint('STATUS CODE: ${e.response?.statusCode}');
+      debugPrint('RESPONSE DATA: ${e.response?.data}');
 
       final message =
           e.response?.data?['detail']?.toString() ?? 'Something went wrong';

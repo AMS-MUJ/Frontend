@@ -14,6 +14,7 @@ import 'package:ams_try2/features/teacher/presentation/providers/home_filter_pro
 import 'package:ams_try2/features/teacher/presentation/providers/filtered_schedule_provider.dart';
 
 import '../providers/home_provider.dart';
+import 'package:path/path.dart' as path;
 
 class Thomepage extends ConsumerWidget {
   static Route<void> route() =>
@@ -232,7 +233,7 @@ class _AttendanceList extends ConsumerWidget {
                 itemCount: records.length,
                 itemBuilder: (_, index) {
                   final record = records[index];
-                  final name = record.excelPath.split('/').last;
+                  final name = path.basename(record.excelPath);
 
                   return ListTile(
                     leading: const Icon(Icons.table_chart, color: Colors.green),

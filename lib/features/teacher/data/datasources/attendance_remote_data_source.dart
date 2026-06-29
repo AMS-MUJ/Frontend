@@ -20,18 +20,32 @@ class AttendanceRemoteDataSource {
       );
     }
 
-    final response = await dio.post(
-      '${ApiRoutes.markAttendance}/$lectureId',
-      data: formData,
+    // Save original connectTimeout and temporarily increase it
+    // for cold-start protection on the ML endpoint
+    final originalConnectTimeout = dio.options.connectTimeout;
+    dio.options.connectTimeout = const Duration(minutes: 2);
 
-      // IMPORTANT
-      options: Options(extra: {'isMultipart': true, 'imagePaths': imagePaths}),
-    );
+    try {
+      final response = await dio.post(
+        '${ApiRoutes.markAttendance}/$lectureId',
+        data: formData,
 
-    if (response.statusCode != 200) {
-      throw Exception('Attendance upload failed');
+        // IMPORTANT — extended timeouts for ML processing + server cold-starts
+        options: Options(
+          extra: {'isMultipart': true, 'imagePaths': imagePaths},
+          receiveTimeout: const Duration(minutes: 2),
+          sendTimeout: const Duration(minutes: 2),
+        ),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Attendance upload failed');
+      }
+
+      return AttendanceModel.fromJson(response.data);
+    } finally {
+      // Restore original connectTimeout
+      dio.options.connectTimeout = originalConnectTimeout;
     }
-
-    return AttendanceModel.fromJson(response.data);
   }
 }

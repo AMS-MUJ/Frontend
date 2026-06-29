@@ -12,10 +12,14 @@ class ImageCompressor {
     final result = await FlutterImageCompress.compressAndGetFile(
       filePath,
       targetPath,
-      quality: 60, // adjust 50–70 if needed
+      quality: 60,
     );
 
-    return result!.path;
+    if (result == null) {
+      return filePath;
+    }
+
+    return result.path;
   }
 
   static Future<List<String>> compressImages(List<String> paths) async {

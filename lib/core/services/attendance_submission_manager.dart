@@ -153,6 +153,8 @@ class AttendanceSubmissionManager {
 
         _queue.removeFirst();
 
+        _activeLectures.remove(job.lectureId);
+
         debugPrint('✅ Removed ${job.lectureId} from queue');
       } catch (e) {
         job.attempts++;
@@ -222,10 +224,6 @@ class AttendanceSubmissionManager {
       debugPrint('❌ REAL FAILURE: $e');
 
       rethrow;
-    } finally {
-      _activeLectures.remove(job.lectureId);
-
-      debugPrint('🧹 Cleared active lock for ${job.lectureId}');
     }
   }
 }

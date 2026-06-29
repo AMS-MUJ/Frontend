@@ -5,11 +5,16 @@ import 'package:ams_try2/core/storage/secure_storage.dart';
 import 'package:ams_try2/features/auth/presentation/pages/login_page.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final dioProvider = Provider<Dio>((ref) {
+  return DioClient(secureStorage: secureStorage).dio;
+});
 
 class DioClient {
   late final Dio dio;
 
-  bool _isRefreshing = false;
+  Future<void>? _refreshFuture;
 
   DioClient({required secureStorage}) {
     dio = Dio(
@@ -40,61 +45,70 @@ class DioClient {
         // ERROR
         // =====================================================
         onError: (e, handler) async {
-          if (e.response?.statusCode == 401 && !_isRefreshing) {
-            _isRefreshing = true;
+          if (e.response?.statusCode == 401) {
+            _refreshFuture ??= () async {
+              try {
+                final refreshToken = await secureStorage.read(
+                  key: 'AUTH_REFRESH_TOKEN',
+                );
+
+                // ==========================================
+                // NO REFRESH TOKEN
+                // ==========================================
+                if (refreshToken == null || refreshToken.isEmpty) {
+                  await _forceLogout();
+                  throw e;
+                }
+
+                // ==========================================
+                // SEPARATE DIO FOR REFRESH
+                // ==========================================
+                final refreshDio = Dio(
+                  BaseOptions(
+                    baseUrl: AppConfig.baseUrl,
+                    headers: {'Content-Type': 'application/json'},
+                  ),
+                );
+
+                final refreshResponse = await refreshDio.post(
+                  ApiRoutes.refresh,
+                  data: {'refresh_token': refreshToken},
+                );
+
+                final newAccessToken = refreshResponse.data['access_token'];
+                final newRefreshToken = refreshResponse.data['refresh_token'];
+
+                // ==========================================
+                // SAVE NEW ACCESS TOKEN
+                // ==========================================
+                await secureStorage.write(
+                  key: 'AUTH_ACCESS_TOKEN',
+                  value: newAccessToken,
+                );
+
+                // ==========================================
+                // SAVE NEW REFRESH TOKEN IF PROVIDED
+                // ==========================================
+                if (newRefreshToken != null) {
+                  await secureStorage.write(
+                    key: 'AUTH_REFRESH_TOKEN',
+                    value: newRefreshToken,
+                  );
+                }
+              } catch (err) {
+                debugPrint('REFRESH TOKEN FAILED: $err');
+                await _forceLogout();
+                rethrow;
+              } finally {
+                _refreshFuture = null;
+              }
+            }();
 
             try {
-              final refreshToken = await secureStorage.read(
-                key: 'AUTH_REFRESH_TOKEN',
-              );
+              // Wait for refresh to complete
+              await _refreshFuture;
 
-              // ==========================================
-              // NO REFRESH TOKEN
-              // ==========================================
-              if (refreshToken == null || refreshToken.isEmpty) {
-                _isRefreshing = false;
-
-                await _forceLogout();
-
-                return handler.reject(e);
-              }
-
-              // ==========================================
-              // SEPARATE DIO FOR REFRESH
-              // ==========================================
-              final refreshDio = Dio(
-                BaseOptions(
-                  baseUrl: AppConfig.baseUrl,
-                  headers: {'Content-Type': 'application/json'},
-                ),
-              );
-
-              final refreshResponse = await refreshDio.post(
-                ApiRoutes.refresh,
-                data: {'refresh_token': refreshToken},
-              );
-
-              final newAccessToken = refreshResponse.data['access_token'];
-
-              final newRefreshToken = refreshResponse.data['refresh_token'];
-
-              // ==========================================
-              // SAVE NEW ACCESS TOKEN
-              // ==========================================
-              await secureStorage.write(
-                key: 'AUTH_ACCESS_TOKEN',
-                value: newAccessToken,
-              );
-
-              // ==========================================
-              // SAVE NEW REFRESH TOKEN IF PROVIDED
-              // ==========================================
-              if (newRefreshToken != null) {
-                await secureStorage.write(
-                  key: 'AUTH_REFRESH_TOKEN',
-                  value: newRefreshToken,
-                );
-              }
+              final newAccessToken = await secureStorage.read(key: 'AUTH_ACCESS_TOKEN');
 
               // ==========================================
               // RETRY ORIGINAL REQUEST
@@ -113,16 +127,8 @@ class DioClient {
 
               final retryResponse = await dio.fetch(requestOptions);
 
-              _isRefreshing = false;
-
               return handler.resolve(retryResponse);
             } catch (err) {
-              debugPrint('REFRESH TOKEN FAILED: $err');
-
-              _isRefreshing = false;
-
-              await _forceLogout();
-
               return handler.reject(e);
             }
           }
@@ -164,7 +170,11 @@ class DioClient {
   }
 
   Future<FormData> _rebuildFormData(RequestOptions requestOptions) async {
-    final imagePaths = requestOptions.extra['imagePaths'] as List<String>;
+    final imagePathsRaw = requestOptions.extra['imagePaths'];
+    if (imagePathsRaw == null || imagePathsRaw is! List) {
+      return FormData();
+    }
+    final imagePaths = List<String>.from(imagePathsRaw);
 
     final formData = FormData();
 

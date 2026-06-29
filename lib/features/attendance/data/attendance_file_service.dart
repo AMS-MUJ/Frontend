@@ -10,9 +10,11 @@ class AttendanceFileService {
     final dir = await getApplicationDocumentsDirectory();
 
     // ---------------------------------------------
-    // FILE NAME
+    // FILE NAME (Sanitized to avoid FileSystemException on invalid characters)
     // ---------------------------------------------
-    final fileName = '${attendance.sectionId}_${attendance.date}.xlsx';
+    final sanitizedSection = attendance.sectionId.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    final sanitizedDate = attendance.date.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    final fileName = '${sanitizedSection}_$sanitizedDate.xlsx';
 
     final excelFile = File('${dir.path}/$fileName');
 

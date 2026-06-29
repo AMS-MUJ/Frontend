@@ -51,6 +51,16 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   }
 
   @override
+  void didUpdateWidget(covariant LectureCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.schedule.attendanceMarked != oldWidget.schedule.attendanceMarked) {
+      setState(() {
+        _submitted = widget.schedule.attendanceMarked;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _resultSub?.cancel();
     super.dispose();
@@ -99,7 +109,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
   // ---------------------------------------------------------
   // SUBMIT ATTENDANCE
   // ---------------------------------------------------------
-  Future<void> _submitAttendance() async {
+  Future<void> _submitAttendance({bool requirePhotos = true}) async {
     if (_isSubmitting || _submitted) return;
 
     if (schedule.lectureId.isEmpty) {
@@ -107,7 +117,7 @@ class _LectureCardState extends ConsumerState<LectureCard> {
       return;
     }
 
-    if (_photoPaths.isEmpty) {
+    if (requirePhotos && _photoPaths.isEmpty) {
       _snack('Please upload at least one photo');
       return;
     }
@@ -316,32 +326,34 @@ class _LectureCardState extends ConsumerState<LectureCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _ActionButton(
-                    label: 'Upload photo',
-                    enabled: canAct && _photoPaths.length < _maxPhotos,
-                    onTap: _showImageSourcePicker,
-                  ),
-
-                  _ActionButton(
-                    label: 'Report mass bunk',
-                    isDanger: true,
-                    enabled: canAct,
-                    onTap: () => _confirm(
-                      title: 'Report mass bunk',
-                      message: 'Are you sure?',
-                      onConfirm: _submitAttendance,
+                  if (!_submitted) ...[
+                    _ActionButton(
+                      label: 'Upload photo',
+                      enabled: canAct && _photoPaths.length < _maxPhotos,
+                      onTap: _showImageSourcePicker,
                     ),
-                  ),
 
-                  _ActionButton(
-                    label: 'Mark all present',
-                    enabled: canAct,
-                    onTap: () => _confirm(
-                      title: 'Mark all present',
-                      message: 'Are you sure?',
-                      onConfirm: _submitAttendance,
+                    _ActionButton(
+                      label: 'Report mass bunk',
+                      isDanger: true,
+                      enabled: canAct,
+                      onTap: () => _confirm(
+                        title: 'Report mass bunk',
+                        message: 'Are you sure?',
+                        onConfirm: () => _submitAttendance(requirePhotos: false),
+                      ),
                     ),
-                  ),
+
+                    _ActionButton(
+                      label: 'Mark all present',
+                      enabled: canAct,
+                      onTap: () => _confirm(
+                        title: 'Mark all present',
+                        message: 'Are you sure?',
+                        onConfirm: () => _submitAttendance(requirePhotos: false),
+                      ),
+                    ),
+                  ],
 
                   if (_photoPaths.isNotEmpty && !_submitted)
                     Padding(
